@@ -1,0 +1,112 @@
+body {
+    margin: 0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    user-zoom: none;
+    color: #F5F5F7;
+    display: grid;
+    font-size: min(2.5vh, 2.5vw);
+    scrollbar-width: 0;
+    width: 100vw;
+    height: 100vh;
+}
+
+body::-webkit-scrollbar {
+    width: 0;
+}
+
+.info-line {
+    opacity: 0;
+    transform: translateY(10px);
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    margin-bottom: 8px;
+    font-weight: 900; /* Much bolder than normal bold */
+    font-size: min(2.5vh, 2.5vw);
+    text-shadow: 
+        -1px -1px 0 #000,
+        1px -1px 0 #000,
+        -1px 1px 0 #000,
+        1px 1px 0 #000,
+        0 0 4px #000; /* Black contour effect */
+    color: #F5F5F7; /* Maintain your text color */
+}
+
+.info-line.visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+#myVideo {
+    position: fixed;
+    justify-self: center;
+    align-self: center;
+    right: 0;
+    bottom: 0;
+    min-width: 100%;
+    min-height: 100%;
+}
+
+section {
+    justify-self: center;
+    align-self: center;
+    position: fixed;
+    z-index: 2000;
+    text-align: center;
+}
+
+div {
+    z-index: 2001;
+    color: #F5F5F7;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+div > button {
+    width: 100vw;
+    height: 100vh;
+    background-color: #000;
+    color: white;
+}
+
+/* Mobile-specific styles - centered square video */
+@media (max-width: 768px), (max-aspect-ratio: 1/1) {
+    #myVideo {
+        width: 100vw;
+        height: 100vw; /* Creates square aspect ratio */
+        min-width: initial;
+        min-height: initial;
+        left: 50%;
+        top: 50%;
+        right: auto;
+        bottom: auto;
+        transform: translate(-50%, -50%);
+        object-fit: cover;
+    }
+
+    /* Optional: Add black bars for true centering */
+    body::before, body::after {
+        content: '';
+        position: fixed;
+        background: #000;
+        z-index: 1;
+        width: 100%;
+        height: calc((100vh - 100vw)/2);
+        left: 0;
+    }
+    body::before {
+        top: 0;
+    }
+    body::after {
+        bottom: 0;
+    }
+
+    /* Ensure video stays above the bars */
+    #myVideo {
+        z-index: 2;
+    }
+
+    /* Adjust text container positioning */
+    section {
+        width: 90vw;
+        left: 5vw;
+    }
+}

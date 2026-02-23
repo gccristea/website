@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Projects</title>
+  <link rel="icon" type="image/png" href="/images/favicon.png" />
+  <style>
+    /* --- FONTS --- */
+    @font-face {
+      font-family: 'FiraCodeNerdFontMono';
+      src: url('/fonts/FiraCodeNerdFontMono-Medium.ttf') format('truetype');
+      font-weight: normal;
+      font-style: normal;
+    }
+
+    /* --- GLOBAL STYLES --- */
+    body {
+      background-color: black;
+      color: #00ff00;
+      font-family: 'Fira Code', 'FiraCodeNerdFontMono', monospace;
+      margin: 0;
+      padding: 20px;
+      font-size: 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    a { 
+      text-decoration: none; 
+      color: inherit; /* Inherit green color */
+    }
+
+    h1 {
+      font-size: 40px;
+      margin-bottom: 30px;
+      text-transform: uppercase;
+      border-bottom: 3px solid #00ff00;
+      padding-bottom: 10px;
+    }
+
+    /* --- PROJECT CARD CONTAINER --- */
+    .project-link {
+      width: 90%;
+      max-width: 800px;
+      margin-bottom: 30px;
+      display: block; /* Makes the anchor behave like a block for the container */
+      transition: transform 0.2s ease-in-out;
+    }
+
+    .project-link:hover {
+      transform: translateX(5px); /* Slight shift on hover */
+    }
+
+    .project-card {
+      border: 3px solid #00ff00;
+      border-radius: 10px;
+      padding: 20px;
+      display: flex; /* This aligns text and image side-by-side */
+      flex-direction: row;
+      align-items: center; /* Vertically center items */
+      justify-content: space-between;
+      gap: 20px;
+      background-color: #000;
+      transition: box-shadow 0.3s;
+    }
+
+    .project-link:hover .project-card {
+      box-shadow: 5px 5px 0px #00ff00; /* Retro shadow effect on hover */
+    }
+
+    /* --- LEFT SIDE: TEXT --- */
+    .project-info {
+      flex: 1; /* Takes up remaining space */
+      text-align: left;
+    }
+
+    .project-title {
+      font-size: 24px;
+      font-weight: bold;
+      margin: 0 0 5px 0;
+      text-transform: uppercase;
+    }
+
+    .project-date {
+      font-size: 14px;
+      opacity: 0.8;
+      margin-bottom: 15px;
+      display: inline-block;
+      background-color: #003300; /* Dark green background for date */
+      padding: 2px 8px;
+      border-radius: 4px;
+    }
+
+    .project-desc {
+      font-size: 16px;
+      line-height: 1.5;
+    }
+
+    /* --- RIGHT SIDE: IMAGE --- */
+    .project-img-wrapper {
+      flex: 0 0 200px; /* Fixed width for the image container */
+      height: 200px; /* Fixed height to keep it square/consistent */
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .project-img-wrapper img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover; /* Ensures image fills the square without stretching */
+      border-radius: 8px;
+      border: 3px solid #00ff00; /* THE GREEN CADRAN */
+      filter: grayscale(100%); /* Optional: Makes images b&w to fit theme */
+      transition: filter 0.3s;
+    }
+
+    /* Make image color on hover */
+    .project-link:hover .project-img-wrapper img {
+      filter: grayscale(0%);
+    }
+
+    /* --- RESPONSIVE DESIGN (Mobile) --- */
+    @media (max-width: 650px) {
+      .project-card {
+        flex-direction: column-reverse; /* Puts image on top or bottom. Reverse puts image top. */
+        text-align: center;
+      }
+
+      .project-info {
+        text-align: center;
+      }
+
+      .project-img-wrapper {
+        width: 100%; /* Full width on mobile */
+        height: auto;
+        flex: auto;
+        max-width: 300px; /* Limit max size on mobile */
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Projects</h1>
+  <a href="/div/iqtest" class="project-link">
+    <div class="project-card">
+      <div class="project-info">
+        <div class="project-title">Scary IQ test</div>
+        <div class="project-date">November 2025 ?</div>
+        <div class="project-desc">
+         It's not even scary but i wanted to do something like this</div>
+      </div>
+      <div class="project-img-wrapper">
+        <img src="/div/iqtest/image.png">
+      </div>
+    </div>
+  </a>
+  
+  <a href="/div/mathbrain/" class="project-link">
+    <div class="project-card">
+      <div class="project-info">
+        <div class="project-title">Math Game</div>
+        <div class="project-date">November 2025</div>
+        <div class="project-desc">
+         a web-game that has some kind of brain-root feeling, but with math formulas (for the romanina bacalaureat)</div>
+      </div>
+      <div class="project-img-wrapper">
+        <img src="/div/mathbrain/math.png">
+      </div>
+    </div>
+  </a>
+
+  <a href="/div/lol/" class="project-link">
+    <div class="project-card">
+      <div class="project-info">
+        <div class="project-title">IP troll</div>
+        <div class="project-date">September 2025</div>
+        <div class="project-desc">
+         I made that meme a real website</div>
+      </div>
+      <div class="project-img-wrapper">
+        <img src="/div/lol/smoke.png">
+      </div>
+    </div>
+  </a>
+
+  <a href="https://youtu.be/pGBlUGeE2mg" class="project-link">
+    <div class="project-card">
+      <div class="project-info">
+        <div class="project-title">AI on intel pentium</div>
+        <div class="project-date">August 2024 </div>
+        <div class="project-desc">
+        I tested an open source language model (Llama I belive) on my old server</div>
+      </div>
+      <div class="project-img-wrapper">
+        <img src="https://img.youtube.com/vi/pGBlUGeE2mg/maxresdefault.jpg">
+      </div>
+    </div>
+  </a>
+</body>
+</html>

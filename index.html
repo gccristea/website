@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>George</title>
+  <link rel="icon" type="image/png" href="images/favicon.png" />
+  <style>
+    @font-face {
+      font-family: 'FiraCodeNerdFontMono';
+      src: url('/fonts/FiraCodeNerdFontMono-Medium.ttf') format('truetype');
+      font-weight: normal;
+      font-style: normal;
+    }
+
+    body {
+      background-color: black;
+      color: #00ff00;
+      font-family: 'FiraCodeNerdFontMono', 'Fira Code', monospace;
+      margin: 0;
+      padding: 10px;
+      font-size: 18px;
+      font-weight: bold;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    a {
+      color: #00ff00;
+      text-decoration: none;
+    }
+
+    a:hover {
+      text-decoration: underline;
+    }
+
+    .container {
+      border: 3px solid #00ff00;
+      padding: 10px;
+      margin-bottom: 10px;
+      border-radius: 10px;
+      width: 90%;
+      max-width: 600px;
+      text-decoration: none;
+    }
+
+    .top-section-link {
+      text-decoration: none;
+      color: inherit;
+      display: block;
+    }
+
+    .top-section-link:hover {
+      opacity: 0.95;
+    }
+
+    .top-section {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .image-container img {
+      width: 200px;
+      cursor: pointer;
+      border: 2px solid #00ff00;
+      border-radius: 5px;
+    }
+
+    .personal-info {
+      flex: 1;
+      align-items: center;
+      text-align: left;
+    }
+
+    .static-links {
+      text-align: center;
+    }
+
+    .link-row {
+      display: flex;
+      justify-content: center;
+      gap: 30px;
+      margin-top: 10px;
+    }
+
+    .static-link {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      color: #00ff00;
+      text-decoration: none;
+      font-family: monospace;
+      font-weight: bold;
+    }
+
+    .static-link .emoji {
+      font-size: 2rem;
+      margin-bottom: 5px;
+    }
+
+    .static-link:hover {
+      text-decoration: underline;
+      color: #00ff99;
+    }
+
+    #info-container {
+      text-align: center;
+    }
+
+    #info-container p {
+      margin-bottom: 10px;
+    }
+
+    @media (max-width: 600px) {
+      .top-section {
+        flex-direction: column;
+        text-align: center;
+      }
+
+      .personal-info {
+        text-align: left;
+      }
+
+      .image-container img {
+        width: 100%;
+        max-width: 250px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container" id="info-container">
+    <p>Welcome to my website</p>
+    <div class="top-section-link">
+      <div class="top-section">
+        <div class="image-container">
+          <img id="clickableImage" src="" onclick="changeImage()">
+        </div>
+        <div class="personal-info">
+          ⚙️ George<br>
+          🌍 Europe, Romania<br>
+          🎓 12th grade<br>
+          ⏱️ you wasted <span id="timer">0</span><br>
+          <a href="https://www.youtube.com/watch?v=dQw4w9WgXcQ" style="text-decoration: none; color: inherit;">
+            🔙 <span>Home</span> <br>
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<div class="container static-links">
+    <div class="link-row">
+      <a class="static-link" href="./div/lol"><div class="emoji">👤</div><div class="label">About</div></a>
+      <a class="static-link" href="./pages/projects"><div class="emoji">💾</div><div class="label">Projects</div></a>
+      <a class="static-link" href="./pages/contact"><div class="emoji">📨</div><div class="label">Contact</div></a>
+    </div>
+  </div>
+
+<script>
+  const image = document.getElementById('clickableImage');
+  const startImages = [
+    'start/image1.png',
+    'start/image2.png',
+    'start/image3.png',
+    'start/image4.png',
+    'start/image5.png'
+  ];
+
+  function getRandomImage() {
+    return startImages[Math.floor(Math.random() * startImages.length)];
+  }
+
+  function changeImage() {
+    let newImg;
+    do {
+      newImg = getRandomImage();
+    } while (image.src.endsWith(newImg));
+    image.src = newImg;
+  }
+
+  window.addEventListener('DOMContentLoaded', () => {
+    image.src = getRandomImage();
+  });
+
+  let seconds = 0;
+  const timerElement = document.getElementById('timer');
+
+  setInterval(() => {
+    seconds++;
+    if (timerElement) {
+      const minutes = Math.floor(seconds / 60);
+      const remainingSeconds = seconds % 60;
+      timerElement.textContent = minutes > 0
+        ? `${minutes}m${remainingSeconds > 0 ? ` ${remainingSeconds}s` : ''}`
+        : `${seconds}s`;
+    }
+  }, 1000);
+</script>
+
+</body>
+</html>

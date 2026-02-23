@@ -1,0 +1,3262 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>BAC.</title>
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+
+    <style>
+        /* --- RESET & LAYOUT --- */
+        :root {
+            --bg-color: #2c3e50;
+            --road-color: rgba(255, 255, 255, 0.05);
+            --ui-height: 180px; /* Am mărit puțin zona de jos */
+        }
+
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+        body {
+            margin: 0; padding: 0;
+            width: 100vw; height: 100vh;
+            background: linear-gradient(180deg, #1a252f 0%, #000000 100%);
+            font-family: 'Segoe UI', sans-serif;
+            overflow: hidden;
+            touch-action: none;
+            user-select: none;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* --- ZONA DE JOC --- */
+        #game-viewport {
+            position: relative;
+            flex: 1;
+            width: 100%;
+            overflow: hidden;
+            border-bottom: 2px solid #34495e;
+        }
+
+        .road-line {
+            position: absolute;
+            top: 0; bottom: 0; width: 4px;
+            background: var(--road-color);
+            z-index: 0;
+        }
+        .line-1 { left: 33.33%; }
+        .line-2 { left: 66.66%; }
+
+        /* --- JUCĂTOR --- */
+        #player {
+            position: absolute;
+            bottom: 20px;
+            width: 50px; height: 50px;
+            background: #3498db;
+            border-radius: 12px;
+            box-shadow: 0 0 15px #3498db;
+            transition: left 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            z-index: 10;
+            display: flex; justify-content: center; align-items: center;
+        }
+        .p-turbo { background: #f1c40f !important; box-shadow: 0 0 30px #f1c40f !important; }
+        .p-slow { background: #8e44ad !important; box-shadow: 0 0 30px #9b59b6 !important; opacity: 0.8; }
+
+        /* --- ÎNTREBĂRI & PORȚI --- */
+        #question-box {
+            position: absolute;
+            top: 10px; left: 5%; width: 80%; 
+            background: rgba(255,255,255,0.95);
+            padding: 10px; border-radius: 10px;
+            text-align: center; font-weight: 600; color: #2c3e50;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            z-index: 20;
+            border-bottom: 4px solid #f39c12;
+            font-size: 1rem;
+            min-height: 60px;
+            display: flex; align-items: center; justify-content: center; flex-direction: column;
+        }
+
+        .gate {
+            position: absolute;
+            width: 30%; height: 130px;
+            background: rgba(39, 174, 96, 0.25);
+            border: 2px solid rgba(46, 204, 113, 0.6);
+            border-radius: 10px;
+            display: flex; justify-content: center; align-items: center;
+            color: white; font-weight: bold; font-size: 1.1rem;
+            z-index: 5; padding: 5px; text-align: center;
+            backdrop-filter: blur(3px);
+        }
+
+        /* --- HUD & AUDIO --- */
+        .hud {
+            position: absolute; top: 80px; 
+            padding: 5px 10px; border-radius: 15px;
+            color: white; font-weight: bold; font-size: 0.9rem;
+            z-index: 15;
+        }
+        #hud-score { left: 10px; background: #27ae60; }
+        #hud-mistakes { right: 10px; background: #c0392b; }
+
+        /* Butoane Audio Sus-Dreapta */
+        #audio-panel {
+            position: absolute; top: 10px; right: 10px;
+            display: flex; flex-direction: column; gap: 8px;
+            z-index: 50;
+        }
+        .mute-btn {
+            width: 40px; height: 40px;
+            background: rgba(0,0,0,0.6);
+            border: 2px solid #7f8c8d;
+            border-radius: 50%;
+            color: white; font-size: 1.2rem;
+            display: flex; justify-content: center; align-items: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .mute-active { background: #c0392b; border-color: #e74c3c; }
+
+        /* --- CONTROALE MOBILE (Jos) --- */
+        #mobile-controls {
+            height: var(--ui-height);
+            background: #10151b;
+            display: grid;
+            grid-template-columns: 1fr 2fr 1fr;
+            align-items: center;
+            /* AICI AM MODIFICAT: Padding jos mai mare (40px) pentru a ridica butoanele */
+            padding: 10px 10px 40px 10px; 
+            z-index: 100;
+            border-top: 1px solid #34495e;
+        }
+
+        .action-btn {
+            width: 70px; height: 70px;
+            border-radius: 50%;
+            border: none; font-weight: bold; color: white;
+            font-size: 0.8rem;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            margin: 0 auto;
+            box-shadow: 0 4px 0 rgba(0,0,0,0.5);
+        }
+        .btn-slow { background: #8e44ad; border-bottom: 4px solid #6c3483; }
+        .btn-turbo { background: #f1c40f; color: #2c3e50; border-bottom: 4px solid #d35400; }
+        .btn-active { transform: translateY(4px); border-bottom-width: 0 !important; opacity: 0.8; }
+
+        .dir-container {
+            display: flex; justify-content: center; gap: 15px;
+            height: 100%; align-items: center;
+        }
+        .dir-btn {
+            width: 80px; height: 80px;
+            background: #34495e;
+            border-radius: 15px;
+            display: flex; justify-content: center; align-items: center;
+            font-size: 2rem; color: #ecf0f1;
+            box-shadow: 0 5px 0 #2c3e50;
+        }
+        .dir-btn:active { transform: translateY(5px); box-shadow: none; background: #2980b9; }
+
+        /* --- ECRANE --- */
+        .screen {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.95);
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            z-index: 999; color: white; text-align: center; padding: 20px;
+        }
+        .hidden { display: none !important; }
+
+        .fb-box {
+            background: #2c3e50; padding: 20px; border-radius: 15px;
+            width: 100%; max-width: 400px; margin-bottom: 20px;
+            border: 1px solid #7f8c8d;
+        }
+
+        button.main-btn {
+            padding: 15px 40px; font-size: 1.2rem;
+            background: #27ae60; color: white; border: none; border-radius: 50px;
+            box-shadow: 0 5px 0 #1e8449;
+        }
+        .katex { font-size: 1.1em; }
+    </style>
+</head>
+<body>
+
+    <div id="game-viewport">
+        <div class="road-line line-1"></div>
+        <div class="road-line line-2"></div>
+
+        <div id="audio-panel">
+            <div id="btn-mute-music" class="mute-btn" onclick="toggleMusic()">🎵</div>
+            <div id="btn-mute-sfx" class="mute-btn" onclick="toggleSFX()">🔊</div>
+        </div>
+
+        <div id="hud-score" class="hud">Corecte: 0</div>
+        <div id="hud-mistakes" class="hud">Greșeli: 0</div>
+
+        <div id="question-box">...</div>
+
+        <div id="player">
+            <svg width="30" height="30" viewBox="0 0 24 24" fill="white"><path d="M12 2L2 22h20L12 2zm0 3l7.5 15h-15L12 5z"/></svg>
+        </div>
+
+        <div id="gates-container"></div>
+    </div>
+
+    <div id="mobile-controls">
+        <div class="action-btn btn-slow" id="btn-slow"><span>🐢</span><span>SLOW</span></div>
+        <div class="dir-container">
+            <div class="dir-btn" id="btn-left">⬅️</div>
+            <div class="dir-btn" id="btn-right">➡️</div>
+        </div>
+        <div class="action-btn btn-turbo" id="btn-turbo"><span>🚀</span><span>TURBO</span></div>
+    </div>
+
+    <div id="start-screen" class="screen">
+        <h1 style="color: #f1c40f;">PICI BACUL ?</h1>
+        <p style="color: #bdc3c7;">Joc Interactiv</p>
+        <div class="fb-box">
+            <p>Întrebările sunt generate de AI 🤖 </p> 
+            <p>Conform fișierului: 
+                <a href="./Formule_BAC.pdf" target="_blank" class="pdf-link" style="color: #3498db;">
+                    Formule_BAC.pdf 📄
+                </a>
+            </p>
+            <p>Controlele pe telefon se află în partea de jos. 🕹️</p>
+        </div>
+        <button class="main-btn" onclick="startGameClick()">START JOC</button>
+    </div>
+
+    <div id="feedback-screen" class="screen hidden">
+        <h2 style="color: #e74c3c;">AI GREȘIT!</h2>
+        <div class="fb-box">
+            <p style="font-size:0.8rem; color:#95a5a6">Întrebarea:</p>
+            <div id="fb-q" style="margin-bottom:15px; font-size:1.1rem"></div>
+            <hr style="border-color:#34495e">
+            <p style="font-size:0.8rem; color:#27ae60; font-weight:bold">Corect:</p>
+            <div id="fb-a" style="font-size:1.3rem; color:#2ecc71"></div>
+            <p id="fb-src" style="font-size:0.7rem; text-align:right; color:#7f8c8d; margin-top:10px"></p>
+        </div>
+        <button class="main-btn" style="background:#3498db" onclick="resumeGame()">CONTINUĂ</button>
+    </div>
+
+<script>
+    /* --- AUDIO SYSTEM --- */
+    const audioFiles = {
+        bg: new Audio('./fundal.mp3'),
+        start: new Audio('./inceput.mp3'),
+        correct: new Audio('./corect.mp3'),
+        wrong: new Audio('./gresit.mp3')
+    };
+
+    // Setări inițiale
+    audioFiles.bg.loop = true;
+    audioFiles.bg.volume = 0.5; // Muzica la 50% volum
+
+    let isMusicMuted = false;
+    let isSFXMuted = false;
+
+    function playSound(type) {
+        if (type === 'bg') {
+            if (!isMusicMuted) {
+                audioFiles.bg.play().catch(e => console.log("Audio play failed (user interaction needed)", e));
+            }
+        } else {
+            // SFX
+            if (!isSFXMuted) {
+                // Clonăm sunetul pentru a permite suprapunerea (rapid fire)
+                const sfx = audioFiles[type].cloneNode();
+                sfx.play().catch(e => {});
+            }
+        }
+    }
+
+    function toggleMusic() {
+        isMusicMuted = !isMusicMuted;
+        const btn = document.getElementById('btn-mute-music');
+        if (isMusicMuted) {
+            audioFiles.bg.pause();
+            btn.innerHTML = '🚫';
+            btn.classList.add('mute-active');
+        } else {
+            audioFiles.bg.play();
+            btn.innerHTML = '🎵';
+            btn.classList.remove('mute-active');
+        }
+    }
+
+    function toggleSFX() {
+        isSFXMuted = !isSFXMuted;
+        const btn = document.getElementById('btn-mute-sfx');
+        if (isSFXMuted) {
+            btn.innerHTML = '🔇';
+            btn.classList.add('mute-active');
+        } else {
+            btn.innerHTML = '🔊';
+            btn.classList.remove('mute-active');
+        }
+    }
+    const database = [
+        { q: "a_n \\text{ (P.A.)}", a: "a_1 + (n-1)r", w1: "a_1 \\cdot r^{n-1}", w2: "a_1 + nr", src: "Pag. 1" },
+        { q: "S_n \\text{ (P.A.)}", a: "\\frac{(a_1+a_n)n}{2}", w1: "\\frac{a_1(r^n-1)}{r-1}", w2: "n \\cdot a_1", src: "Pag. 1" },
+        { q: "r \\text{ (Rația P.A.)}", a: "a_{n+1} - a_n", w1: "\\frac{a_{n+1}}{a_n}", w2: "a_n - a_{n-1}", src: "Pag. 1" },
+        { q: "b_n \\text{ (P.G.)}", a: "b_1 \\cdot q^{n-1}", w1: "b_1 + (n-1)q", w2: "b_1 \\cdot q^n", src: "Pag. 1" },
+        { q: "S_n \\text{ (P.G.) } q \\ne 1", a: "b_1 \\frac{q^n-1}{q-1}", w1: "\\frac{(b_1+b_n)n}{2}", w2: "b_1(1-q)^n", src: "Pag. 1" },
+        { q: "\\text{Condiție P.A.}", a: "2B = A + C", w1: "B^2 = A \\cdot C", w2: "B = A + C", src: "Pag. 1" },
+        { q: "\\text{Condiție P.G.}", a: "B^2 = A \\cdot C", w1: "2B = A + C", w2: "B = A \\cdot C", src: "Pag. 1" },
+
+        { q: "\\log_a 1", a: "0", w1: "1", w2: "a", src: "Pag. 2" },
+        { q: "\\log_a a", a: "1", w1: "0", w2: "a", src: "Pag. 2" },
+        { q: "\\log_a(xy)", a: "\\log_a x + \\log_a y", w1: "\\log_a x \\cdot \\log_a y", w2: "\\log_a (x+y)", src: "Pag. 2" },
+        { q: "\\log_a \\frac{x}{y}", a: "\\log_a x - \\log_a y", w1: "\\frac{\\log_a x}{\\log_a y}", w2: "\\log_a (x-y)", src: "Pag. 2" },
+        { q: "\\log_a x^n", a: "n \\log_a x", w1: "\\log_a x + n", w2: "x^n", src: "Pag. 2" },
+        { q: "\\text{Schimb. baza } \\log_a b", a: "\\frac{\\log_c b}{\\log_c a}", w1: "\\log_c a \\cdot \\log_c b", w2: "\\log_b a", src: "Pag. 2" },
+
+        { q: "a^0", a: "1", w1: "0", w2: "a", src: "Pag. 3" },
+        { q: "a^{-n}", a: "\\frac{1}{a^n}", w1: "-a^n", w2: "a^{\\frac{1}{n}}", src: "Pag. 3" },
+        { q: "a^m \\cdot a^n", a: "a^{m+n}", w1: "a^{m \\cdot n}", w2: "(2a)^{m+n}", src: "Pag. 3" },
+        { q: "\\frac{a^m}{a^n}", a: "a^{m-n}", w1: "a^{\\frac{m}{n}}", w2: "a^{n-m}", src: "Pag. 3" },
+        { q: "(a^m)^n", a: "a^{m \\cdot n}", w1: "a^{m+n}", w2: "a^{m^n}", src: "Pag. 3" },
+        { q: "\\sqrt[n]{x^q}", a: "x^{\\frac{q}{n}}", w1: "x^{\\frac{n}{q}}", w2: "x^{n-q}", src: "Pag. 3" },
+
+        { q: "i^2", a: "-1", w1: "1", w2: "0", src: "Pag. 4" },
+        { q: "|z| = |a+bi|", a: "\\sqrt{a^2+b^2}", w1: "a^2+b^2", w2: "\\sqrt{a^2-b^2}", src: "Pag. 4" },
+        { q: "\\overline{z} = \\overline{a+bi}", a: "a - bi", w1: "-a - bi", w2: "-a + bi", src: "Pag. 4" },
+        { q: "\\text{Ec. } \\Delta < 0", a: "x_{1,2} = \\frac{-b \\pm i\\sqrt{-\\Delta}}{2a}", w1: "\\text{Fără soluții}", w2: "\\frac{-b \\pm \\sqrt{\\Delta}}{2a}", src: "Pag. 4" },
+
+        { q: "P_n", a: "n!", w1: "(n-1)!", w2: "n^n", src: "Pag. 13" },
+        { q: "A_n^k", a: "\\frac{n!}{(n-k)!}", w1: "\\frac{n!}{k!(n-k)!}", w2: "n^k", src: "Pag. 13" },
+        { q: "C_n^k", a: "\\frac{n!}{k!(n-k)!}", w1: "\\frac{n!}{(n-k)!}", w2: "k! \\cdot n!", src: "Pag. 13" },
+        { q: "\\sum_{k=0}^n C_n^k", a: "2^n", w1: "2^{n-1}", w2: "n^2", src: "Pag. 13" },
+
+        { q: "x_V \\text{ (Vârf)}", a: "-\\frac{b}{2a}", w1: "-\\frac{b}{a}", w2: "\\frac{\\Delta}{4a}", src: "Pag. 10" },
+        { q: "y_V \\text{ (Extrem)}", a: "-\\frac{\\Delta}{4a}", w1: "\\frac{\\Delta}{4a}", w2: "-\\frac{b}{2a}", src: "Pag. 10" },
+        { q: "x_1 + x_2", a: "-\\frac{b}{a}", w1: "\\frac{c}{a}", w2: "\\frac{b}{a}", src: "Pag. 9" },
+        { q: "x_1 \\cdot x_2", a: "\\frac{c}{a}", w1: "-\\frac{b}{a}", w2: "-\\frac{c}{a}", src: "Pag. 9" },
+
+        { q: "\\text{Distanța } AB", a: "\\sqrt{(x_B-x_A)^2 + (y_B-y_A)^2}", w1: "\\sqrt{(x_B+x_A)^2}", w2: "|x_B-x_A| + |y_B-y_A|", src: "Pag. 15" },
+        { q: "\\text{Mijloc } M", a: "\\frac{x_A+x_B}{2}, \\frac{y_A+y_B}{2}", w1: "\\frac{x_A-x_B}{2}, \\frac{y_A-y_B}{2}", w2: "x_A+x_B, y_A+y_B", src: "Pag. 15" },
+        { q: "m_{AB} \\text{ (Panta)}", a: "\\frac{y_B-y_A}{x_B-x_A}", w1: "\\frac{x_B-x_A}{y_B-y_A}", w2: "y_B-y_A", src: "Pag. 15" },
+        { q: "d_1 || d_2", a: "m_1 = m_2", w1: "m_1 \\cdot m_2 = -1", w2: "m_1 = -m_2", src: "Pag. 16" },
+        { q: "d_1 \\perp d_2", a: "m_1 \\cdot m_2 = -1", w1: "m_1 = m_2", w2: "m_1 \\cdot m_2 = 1", src: "Pag. 16" },
+
+        { q: "|\\vec{v}| = \\sqrt{x^2+y^2}", a: "\\text{Modulul vectorului}", w1: "\\text{Produs scalar}", w2: "\\text{Suma}", src: "Pag. 17" },
+        { q: "\\vec{u} \\cdot \\vec{v} = 0", a: "\\vec{u} \\perp \\vec{v}", w1: "\\vec{u} || \\vec{v}", w2: "\\vec{u} = \\vec{v}", src: "Pag. 17" },
+        { q: "\\frac{x_1}{x_2} = \\frac{y_1}{y_2}", a: "\\vec{u} || \\vec{v}", w1: "\\vec{u} \\perp \\vec{v}", w2: "\\vec{u} = \\vec{v}", src: "Pag. 17" },
+
+        { q: "\\sin^2 x + \\cos^2 x", a: "1", w1: "0", w2: "-1", src: "Pag. 19" },
+        { q: "\\sin 30^\\circ", a: "\\frac{1}{2}", w1: "\\frac{\\sqrt{3}}{2}", w2: "\\frac{\\sqrt{2}}{2}", src: "Pag. 18" },
+        { q: "\\cos 60^\\circ", a: "\\frac{1}{2}", w1: "\\frac{\\sqrt{3}}{2}", w2: "1", src: "Pag. 18" },
+        { q: "\\sin(a+b)", a: "\\sin a \\cos b + \\cos a \\sin b", w1: "\\sin a \\cos b - \\cos a \\sin b", w2: "\\sin a + \\sin b", src: "Pag. 19" },
+        { q: "\\sin 2x", a: "2\\sin x \\cos x", w1: "\\sin^2 x - \\cos^2 x", w2: "2\\sin x", src: "Pag. 19" },
+        { q: "\\cos 2x", a: "\\cos^2 x - \\sin^2 x", w1: "2\\sin x \\cos x", w2: "1 - \\sin^2 x", src: "Pag. 19" },
+        { q: "a^2 = b^2+c^2 - 2bc \\cos A", a: "\\text{T. Cosinusului}", w1: "\\text{T. Sinusurilor}", w2: "\\text{Pitagora}", src: "Pag. 21" },
+        { q: "\\frac{a}{\\sin A} = 2R", a: "\\text{T. Sinusurilor}", w1: "\\text{T. Cosinusului}", w2: "\\text{Aria}", src: "Pag. 21" },
+
+        { q: "\\lim_{n\\to\\infty} q^n, |q|<1", a: "0", w1: "1", w2: "\\infty", src: "Pag. 35" },
+        { q: "\\lim_{n\\to\\infty} \\frac{\\sin x}{x}", a: "1", w1: "0", w2: "\\infty", src: "Pag. 36" },
+        { q: "\\lim_{n\\to\\infty} (1+x)^{\\frac{1}{x}}", a: "e", w1: "1", w2: "\\infty", src: "Pag. 36" },
+        { q: "\\text{Asimptotă orizontală}", a: "y = l", w1: "x = x_0", w2: "y = mx+n", src: "Pag. 37" },
+        { q: "(x^n)'", a: "nx^{n-1}", w1: "x^{n+1}", w2: "\\frac{x^{n+1}}{n+1}", src: "Pag. 33" },
+        { q: "(\\ln x)'", a: "\\frac{1}{x}", w1: "e^x", w2: "\\ln x", src: "Pag. 33" },
+        { q: "(e^x)'", a: "e^x", w1: "xe^{x-1}", w2: "\\ln x", src: "Pag. 33" },
+        { q: "(\\sin x)'", a: "\\cos x", w1: "-\\cos x", w2: "-\\sin x", src: "Pag. 33" },
+        { q: "(\\cos x)'", a: "-\\sin x", w1: "\\sin x", w2: "\\cos x", src: "Pag. 33" },
+        { q: "(\\frac{f}{g})'", a: "\\frac{f'g - fg'}{g^2}", w1: "\\frac{f'g + fg'}{g^2}", w2: "\\frac{f'}{g'}", src: "Pag. 34" },
+
+        { q: "\\int x^n dx", a: "\\frac{x^{n+1}}{n+1} + C", w1: "nx^{n-1}", w2: "x^{n+1}", src: "Pag. 41" },
+        { q: "\\int \\frac{1}{x} dx", a: "\\ln|x| + C", w1: "-\\frac{1}{x^2}", w2: "e^x", src: "Pag. 41" },
+        { q: "\\int e^x dx", a: "e^x + C", w1: "xe^x", w2: "\\ln x", src: "Pag. 41" },
+        { q: "\\int \\frac{1}{x^2+a^2} dx", a: "\\frac{1}{a}\\text{arctg}\\frac{x}{a}", w1: "\\frac{1}{2a}\\ln\\frac{x-a}{x+a}", w2: "\\arcsin\\frac{x}{a}", src: "Pag. 41" },
+        { q: "\\int \\sin x dx", a: "-\\cos x + C", w1: "\\cos x", w2: "\\sin x", src: "Pag. 41" },
+        { q: "\\text{Integrare prin părți}", a: "fg - \\int f g' dx", w1: "fg + \\int f g' dx", w2: "f'g - \\int fg' dx", src: "Pag. 40" },
+        { q: "\\text{Aria } \\Gamma_f", a: "\\int_a^b |f(x)| dx", w1: "\\pi \\int f^2(x)", w2: "\\int f(x)", src: "Pag. 42" },
+        { q: "\\text{Volumul } C_f", a: "\\pi \\int_a^b f^2(x) dx", w1: "\\int |f(x)|", w2: "2\\pi \\int f(x)", src: "Pag. 42" },
+
+
+    // --- PROGRESII (GLM 4.6)---
+    {
+        q: "Ce reprezintă o progresie aritmetică?",
+        a: "Un șir de numere în care diferența dintre orice termen consecutiv este constantă.",
+        w1: "Un șir de numere în care raportul dintre orice termen consecutiv este constant.",
+        w2: "Un șir de numere aleatorii.",
+        src: "Formule_BAC.pdf - Subiectul I.1"
+    },
+    {
+        q: "Care este formula de recurență pentru o progresie aritmetică?",
+        a: "a_{n+1} = a_n + r",
+        w1: "a_{n+1} = a_n * r",
+        w2: "a_{n+1} = a_n / r",
+        src: "Formule_BAC.pdf - Subiectul I.1"
+    },
+    {
+        q: "Care este formula termenului general pentru o progresie aritmetică?",
+        a: "a_n = a_1 + (n-1)r",
+        w1: "a_n = a_1 * r^{n-1}",
+        w2: "a_n = a_1 + nr",
+        src: "Formule_BAC.pdf - Subiectul I.1"
+    },
+    {
+        q: "Care este suma primilor n termeni ai unei progresii aritmetice?",
+        a: "S_n = \\frac{n}{2} [2a_1 + (n-1)r]",
+        w1: "S_n = \\frac{a_1 (1-r^n)}{1-r}",
+        w2: "S_n = n \\cdot a_1 \\cdot r^{n-1}",
+        src: "Formule_BAC.pdf - Subiectul I.1"
+    },
+    {
+        q: "Ce reprezintă o progresie geometrică?",
+        a: "Un șir de numere în care raportul dintre orice termen consecutiv este constant.",
+        w1: "Un șir de numere în care diferența dintre orice termen consecutiv este constantă.",
+        w2: "Un șir de numere a căror sumă este constantă.",
+        src: "Formule_BAC.pdf - Subiectul I.1"
+    },
+    {
+        q: "Care este formula de recurență pentru o progresie geometrică?",
+        a: "a_{n+1} = a_n \\cdot q",
+        w1: "a_{n+1} = a_n + q",
+        w2: "a_{n+1} = a_n / q",
+        src: "Formule_BAC.pdf - Subiectul I.1"
+    },
+    {
+        q: "Care este formula termenului general pentru o progresie geometrică?",
+        a: "a_n = a_1 \\cdot q^{n-1}",
+        w1: "a_n = a_1 + (n-1)q",
+        w2: "a_n = a_1 \\cdot q^n",
+        src: "Formule_BAC.pdf - Subiectul I.1"
+    },
+    {
+        q: "Care este suma primilor n termeni ai unei progresii geometrice (q != 1)?",
+        a: "S_n = \\frac{a_1 (1 - q^n)}{1 - q}",
+        w1: "S_n = \\frac{n}{2} [2a_1 + (n-1)q]",
+        w2: "S_n = a_1 \\cdot n \\cdot q",
+        src: "Formule_BAC.pdf - Subiectul I.1"
+    },
+    {
+        q: "Care este condiția ca trei numere a, b, c să fie termeni consecutivi ai unei progresii aritmetice?",
+        a: "b = \\frac{a+c}{2}",
+        w1: "b^2 = a \\cdot c",
+        w2: "b = a + c",
+        src: "Formule_BAC.pdf - Subiectul I.1"
+    },
+    {
+        q: "Care este condiția ca trei numere a, b, c să fie termeni consecutivi ai unei progresii geometrice?",
+        a: "b^2 = a \\cdot c",
+        w1: "b = \\frac{a+c}{2}",
+        w2: "b = \\sqrt{a} + \\sqrt{c}",
+        src: "Formule_BAC.pdf - Subiectul I.1"
+    },
+
+    // --- LOGARITMI ---
+    {
+        q: "Ce este logaritmul din baza a al numărului b (log_a b)?",
+        a: "Exponentul la care trebuie ridicată baza a pentru a obține numărul b.",
+        w1: "Raportul dintre numărul b și baza a.",
+        w2: "Radical de ordin a din numărul b.",
+        src: "Formule_BAC.pdf - Subiectul I.1"
+    },
+    {
+        q: "Care sunt condițiile de existență ale logaritmului log_a b?",
+        a: "a > 0, a \\neq 1, b > 0",
+        w1: "a > 0, b \\neq 0",
+        w2: "a \\neq 1, b \\in \\mathbb{R}",
+        src: "Formule_BAC.pdf - Subiectul I.1"
+    },
+    {
+        q: "Cum se notează logaritmul zecimal?",
+        a: "\\log b",
+        w1: "\\ln b",
+        w2: "\\lg b",
+        src: "Formule_BAC.pdf - Subiectul I.1"
+    },
+    {
+        q: "Cum se notează logaritmul natural?",
+        a: "\\ln b",
+        w1: "\\log b",
+        w2: "\\log_e b",
+        src: "Formule_BAC.pdf - Subiectul I.1"
+    },
+    {
+        q: "Care este formula fundamentală a logaritmilor: a^{\\log_a b} ?",
+        a: "b",
+        w1: "\\log_a b",
+        w2: "a",
+        src: "Formule_BAC.pdf - Subiectul I.1"
+    },
+    {
+        q: "Care este formula de schimbare a bazei: \\log_a b ?",
+        a: "\\frac{\\log_c b}{\\log_c a}",
+        w1: "\\log_c b - \\log_c a",
+        w2: "\\log_c (b-a)",
+        src: "Formule_BAC.pdf - Subiectul I.1"
+    },
+    {
+        q: "Care este monotonitatea funcției logaritmice f(x) = \\log_a x dacă a > 1?",
+        a: "Strict crescătoare",
+        w1: "Strict descrescătoare",
+        w2: "Constantă",
+        src: "Formule_BAC.pdf - Subiectul I.1"
+    },
+    {
+        q: "Care este monotonitatea funcției logaritmice f(x) = \\log_a x dacă 0 < a < 1?",
+        a: "Strict descrescătoare",
+        w1: "Strict crescătoare",
+        w2: "Constantă",
+        src: "Formule_BAC.pdf - Subiectul I.1"
+    },
+    {
+        q: "Care este monotonitatea funcției exponențiale f(x) = a^x dacă a > 1?",
+        a: "Strict crescătoare",
+        w1: "Strict descrescătoare",
+        w2: "Constantă",
+        src: "Formule_BAC.pdf - Subiectul I.1"
+    },
+    {
+        q: "Care este monotonitatea funcției exponențiale f(x) = a^x dacă 0 < a < 1?",
+        a: "Strict descrescătoare",
+        w1: "Strict crescătoare",
+        w2: "Constantă",
+        src: "Formule_BAC.pdf - Subiectul I.1"
+    },
+
+    // --- PUTERI ȘI RADICALI ---
+    {
+        q: "Care este definiția puterii cu exponent natural: a^n?",
+        a: "a \\cdot a \\cdot ... \\cdot a (de n ori)",
+        w1: "n \\cdot a",
+        w2: "a + a + ... + a (de n ori)",
+        src: "Formule_BAC.pdf - Subiectul I.1"
+    },
+    {
+        q: "Care este proprietatea puterilor: a^m \\cdot a^n ?",
+        a: "a^{m+n}",
+        w1: "a^{m \\cdot n}",
+        w2: "(a^m)^n",
+        src: "Formule_BAC.pdf - Subiectul I.1"
+    },
+    {
+        q: "Care este proprietatea puterilor: (a^m)^n ?",
+        a: "a^{m \\cdot n}",
+        w1: "a^{m+n}",
+        w2: "a^{m-n}",
+        src: "Formule_BAC.pdf - Subiectul I.1"
+    },
+    {
+        q: "Care este proprietatea puterilor: \\frac{a^m}{a^n} ?",
+        a: "a^{m-n}",
+        w1: "a^{m+n}",
+        w2: "a^{m \\cdot n}",
+        src: "Formule_BAC.pdf - Subiectul I.1"
+    },
+    {
+        q: "Care este proprietatea puterilor: (a \\cdot b)^n ?",
+        a: "a^n \\cdot b^n",
+        w1: "a^n + b^n",
+        w2: "(a+b)^n",
+        src: "Formule_BAC.pdf - Subiectul I.1"
+    },
+    {
+        q: "Care este proprietatea puterilor: (\\frac{a}{b})^n ?",
+        a: "\\frac{a^n}{b^n}",
+        w1: "\\frac{a^n}{b}",
+        w2: "\\frac{a}{b^n}",
+        src: "Formule_BAC.pdf - Subiectul I.1"
+    },
+    {
+        q: "Care este definiția radicalului de ordin par (ex: \\sqrt[n]{a})?",
+        a: "Numărul pozitiv b astfel încât b^n = a",
+        w1: "Orice număr b astfel încât b^n = a",
+        w2: "Numărul negativ b astfel încât b^n = a",
+        src: "Formule_BAC.pdf - Subiectul I.1"
+    },
+    {
+        q: "Care este condiția de existență a radicalului de ordin par: \\sqrt[n]{a}?",
+        a: "a \\ge 0",
+        w1: "a > 0",
+        w2: "a \\in \\mathbb{R}",
+        src: "Formule_BAC.pdf - Subiectul I.1"
+    },
+    {
+        q: "Care este proprietatea radicalilor: \\sqrt[n]{a \\cdot b} ?",
+        a: "\\sqrt[n]{a} \\cdot \\sqrt[n]{b}",
+        w1: "\\sqrt[n]{a} + \\sqrt[n]{b}",
+        w2: "\\sqrt[n]{a+b}",
+        src: "Formule_BAC.pdf - Subiectul I.1"
+    },
+    {
+        q: "Care este proprietatea radicalilor: \\sqrt[n]{\\frac{a}{b}} ?",
+        a: "\\frac{\\sqrt[n]{a}}{\\sqrt[n]{b}}",
+        w1: "\\frac{\\sqrt[n]{a}}{b}",
+        w2: "\\frac{a}{\\sqrt[n]{b}}",
+        src: "Formule_BAC.pdf - Subiectul I.1"
+    },
+    {
+        q: "Cum se transformă o putere cu exponent rațional în radical: a^{\\frac{m}{n}}?",
+        a: "\\sqrt[n]{a^m}",
+        w1: "\\sqrt[m]{a^n}",
+        w2: "(\\sqrt[n]{a})^m",
+        src: "Formule_BAC.pdf - Subiectul I.1"
+    },
+
+    // --- NUMERE COMPLEXE ---
+    {
+        q: "Care este forma algebrică a unui număr complex z?",
+        a: "z = a + bi",
+        w1: "z = r(\\cos \\theta + i \\sin \\theta)",
+        w2: "z = re^{i\\theta}",
+        src: "Formule_BAC.pdf - Subiectul I.1"
+    },
+    {
+        q: "Ce reprezintă partea reală a numărului complex z = a + bi?",
+        a: "a",
+        w1: "b",
+        w2: "i",
+        src: "Formule_BAC.pdf - Subiectul I.1"
+    },
+    {
+        q: "Ce reprezintă partea imaginară a numărului complex z = a + bi?",
+        a: "b",
+        w1: "a",
+        w2: "bi",
+        src: "Formule_BAC.pdf - Subiectul I.1"
+    },
+    {
+        q: "Care este modulul numărului complex z = a + bi?",
+        a: "|z| = \\sqrt{a^2 + b^2}",
+        w1: "|z| = a^2 + b^2",
+        w2: "|z| = \\sqrt{a+b}",
+        src: "Formule_BAC.pdf - Subiectul I.1"
+    },
+    {
+        q: "Care este conjugatul numărului complex z = a + bi?",
+        a: "\\bar{z} = a - bi",
+        w1: "\\bar{z} = -a + bi",
+        w2: "\\bar{z} = -a - bi",
+        src: "Formule_BAC.pdf - Subiectul I.1"
+    },
+    {
+        q: "Care este produsul unui număr complex cu conjugatul său: z \\cdot \\bar{z}?",
+        a: "|z|^2",
+        w1: "z",
+        w2: "\\bar{z}",
+        src: "Formule_BAC.pdf - Subiectul I.1"
+    },
+    {
+        q: "Cum se calculează raportul a două numere complexe \\frac{z_1}{z_2}?",
+        a: "Prin amplificarea cu conjugatul numitorului.",
+        w1: "Prin împărțirea părților reale și imaginare separat.",
+        w2: "Prin scăderea modulelor.",
+        src: "Formule_BAC.pdf - Subiectul I.1"
+    },
+    {
+        q: "Care este valoarea lui i^2?",
+        a: "-1",
+        w1: "1",
+        w2: "i",
+        src: "Formule_BAC.pdf - Subiectul I.1"
+    },
+    {
+        q: "Care este soluția ecuației de grad II ax^2 + bx + c = 0 cu Δ < 0?",
+        a: "x_{1,2} = \\frac{-b \\pm i\\sqrt{-\\Delta}}{2a}",
+        w1: "x_{1,2} = \\frac{-b \\pm \\sqrt{\\Delta}}{2a}",
+        w2: "Ecuația nu are soluții.",
+        src: "Formule_BAC.pdf - Subiectul I.1"
+    },
+
+    // --- FORMULE DE CALCUL PRESCURTAT ---
+    {
+        q: "Care este formula pentru (a + b)^2?",
+        a: "a^2 + 2ab + b^2",
+        w1: "a^2 - 2ab + b^2",
+        w2: "a^2 + b^2",
+        src: "Formule_BAC.pdf - Subiectul I.1"
+    },
+    {
+        q: "Care este formula pentru (a - b)^2?",
+        a: "a^2 - 2ab + b^2",
+        w1: "a^2 + 2ab + b^2",
+        w2: "a^2 - b^2",
+        src: "Formule_BAC.pdf - Subiectul I.1"
+    },
+    {
+        q: "Care este formula pentru (a + b)(a - b)?",
+        a: "a^2 - b^2",
+        w1: "a^2 + b^2",
+        w2: "(a-b)^2",
+        src: "Formule_BAC.pdf - Subiectul I.1"
+    },
+    {
+        q: "Care este formula pentru (a + b)^3?",
+        a: "a^3 + 3a^2b + 3ab^2 + b^3",
+        w1: "a^3 - 3a^2b + 3ab^2 - b^3",
+        w2: "a^3 + b^3",
+        src: "Formule_BAC.pdf - Subiectul I.1"
+    },
+    {
+        q: "Care este formula pentru (a - b)^3?",
+        a: "a^3 - 3a^2b + 3ab^2 - b^3",
+        w1: "a^3 + 3a^2b - 3ab^2 - b^3",
+        w2: "a^3 - b^3",
+        src: "Formule_BAC.pdf - Subiectul I.1"
+    },
+    {
+        q: "Care este formula pentru a^3 + b^3?",
+        a: "(a + b)(a^2 - ab + b^2)",
+        w1: "(a - b)(a^2 + ab + b^2)",
+        w2: "(a + b)^3",
+        src: "Formule_BAC.pdf - Subiectul I.1"
+    },
+    {
+        q: "Care este formula pentru a^3 - b^3?",
+        a: "(a - b)(a^2 + ab + b^2)",
+        w1: "(a + b)(a^2 - ab + b^2)",
+        w2: "(a - b)^3",
+        src: "Formule_BAC.pdf - Subiectul I.1"
+    },
+
+    // --- PARTEA ÎNTREAGĂ ȘI PARTEA FRACTIONARĂ ---
+    {
+        q: "Cum se notează partea întreagă a unui număr real x?",
+        a: "[x]",
+        w1: "\\{x\\}",
+        w2: "|x|",
+        src: "Formule_BAC.pdf - Subiectul I.1"
+    },
+    {
+        q: "Care este definiția părții întregi [x]?",
+        a: "Cel mai mare număr întreg mai mic sau egal cu x.",
+        w1: "Cel mai apropiat număr întreg de x.",
+        w2: "Partea zecimală a lui x.",
+        src: "Formule_BAC.pdf - Subiectul I.1"
+    },
+    {
+        q: "Cum se notează partea fracționară a unui număr real x?",
+        a: "\\{x\\}",
+        w1: "[x]",
+        w2: "|x|",
+        src: "Formule_BAC.pdf - Subiectul I.1"
+    },
+    {
+        q: "Care este definiția părții fracționare \\{x\\}?",
+        a: "x - [x]",
+        w1: "[x] - x",
+        w2: "x + [x]",
+        src: "Formule_BAC.pdf - Subiectul I.1"
+    },
+    {
+        q: "Ce valoare poate lua partea fracționară \\{x\\}?",
+        a: "0 \\le \\{x\\} < 1",
+        w1: "-1 < \\{x\\} \\le 0",
+        w2: "\\{x\\} \\in \\mathbb{Z}",
+        src: "Formule_BAC.pdf - Subiectul I.1"
+    },
+    {
+        q: "Care este relația dintre x, partea întreagă și partea fracționară?",
+        a: "x = [x] + \\{x\\}",
+        w1: "[x] = x + \\{x\\}",
+        w2: "\\{x\\} = [x] + x",
+        src: "Formule_BAC.pdf - Subiectul I.1"
+    },
+
+    // --- MODULUL UNUI NUMĂR REAL ---
+    {
+        q: "Care este definiția modulului unui număr real x?",
+        a: "|x| = \\begin{cases} x, & x \\ge 0 \\ -x, & x < 0 \\end{cases}",
+        w1: "|x| = x",
+        w2: "|x| = -x",
+        src: "Formule_BAC.pdf - Subiectul I.1"
+    },
+    {
+        q: "Ce proprietate are modulul: |a \\cdot b|?",
+        a: "|a| \\cdot |b|",
+        w1: "|a| + |b|",
+        w2: "|a - b|",
+        src: "Formule_BAC.pdf - Subiectul I.1"
+    },
+    {
+        q: "Ce proprietate are modulul: |\\frac{a}{b}|?",
+        a: "\\frac{|a|}{|b|}",
+        w1: "\\frac{|a|}{b}",
+        w2: "\\frac{a}{|b|}",
+        src: "Formule_BAC.pdf - Subiectul I.1"
+    },
+    {
+        q: "Ce proprietate are modulul: |a + b|?",
+        a: "\\le |a| + |b|",
+        w1: "\\ge |a| + |b|",
+        w2: "= |a| + |b|",
+        src: "Formule_BAC.pdf - Subiectul I.1"
+    },
+
+    // --- FUNCȚII – definiții și proprietăți ---
+    {
+        q: "Cum se notează domeniul unei funcții f?",
+        a: "D_f",
+        w1: "C_f",
+        w2: "Im(f)",
+        src: "Formule_BAC.pdf - Subiectul I.2"
+    },
+    {
+        q: "Cum se notează codomeniul unei funcții f?",
+        a: "C_f",
+        w1: "D_f",
+        w2: "Im(f)",
+        src: "Formule_BAC.pdf - Subiectul I.2"
+    },
+    {
+        q: "Ce reprezintă intersecția graficului unei funcții cu axa Ox?",
+        a: "Soluțiile ecuației f(x) = 0",
+        w1: "Valoarea f(0)",
+        w2: "Punctul de maxim al funcției.",
+        src: "Formule_BAC.pdf - Subiectul I.2"
+    },
+    {
+        q: "Ce reprezintă intersecția graficului unei funcții cu axa Oy?",
+        a: "Punctul (0, f(0))",
+        w1: "Soluțiile ecuației f(x) = 0",
+        w2: "Punctul de minim al funcției.",
+        src: "Formule_BAC.pdf - Subiectul I.2"
+    },
+    {
+        q: "Cum se determină coordonatele punctelor de intersecție a două grafice G_f și G_g?",
+        a: "Rezolvând sistemul format din ecuațiile f(x) și g(x)",
+        w1: "Adunând ecuațiile funcțiilor.",
+        w2: "Calculând f(x) + g(x).",
+        src: "Formule_BAC.pdf - Subiectul I.2"
+    },
+    {
+        q: "Cum se definește o funcție pară?",
+        a: "f(-x) = f(x) pentru orice x din D_f",
+        w1: "f(-x) = -f(x) pentru orice x din D_f",
+        w2: "f(x+T) = f(x)",
+        src: "Formule_BAC.pdf - Subiectul I.2"
+    },
+    {
+        q: "Cum se definește o funcție impară?",
+        a: "f(-x) = -f(x) pentru orice x din D_f",
+        w1: "f(-x) = f(x) pentru orice x din D_f",
+        w2: "f(x+T) = f(x)",
+        src: "Formule_BAC.pdf - Subiectul I.2"
+    },
+    {
+        q: "Cum se definește o funcție periodică cu perioada T?",
+        a: "f(x+T) = f(x) pentru orice x din D_f",
+        w1: "f(-x) = f(x)",
+        w2: "f(x+1) = f(x)",
+        src: "Formule_BAC.pdf - Subiectul I.2"
+    },
+    {
+        q: "Ce este o funcție injectivă?",
+        a: "O funcție pentru care x_1 \\neq x_2 implică f(x_1) \\neq f(x_2)",
+        w1: "O funcție pentru care f(x_1) = f(x_2) implică x_1 = x_2",
+        w2: "O funcție al cărei codomeniu este egal cu imaginea.",
+        src: "Formule_BAC.pdf - Subiectul I.2"
+    },
+    {
+        q: "Ce este o funcție surjectivă?",
+        a: "O funcție pentru care Im(f) = C_f",
+        w1: "O funcție pentru care x_1 \\neq x_2 implică f(x_1) \\neq f(x_2)",
+        w2: "O funcție care este injectivă.",
+        src: "Formule_BAC.pdf - Subiectul I.2"
+    },
+    {
+        q: "Ce este o funcție bijectivă?",
+        a: "O funcție care este atât injectivă, cât și surjectivă.",
+        w1: "O funcție care este doar injectivă.",
+        w2: "O funcție care este doar surjectivă.",
+        src: "Formule_BAC.pdf - Subiectul I.2"
+    },
+    {
+        q: "Ce condiție trebuie să îndeplinească o funcție pentru a fi inversabilă?",
+        a: "Să fie bijectivă.",
+        w1: "Să fie injectivă.",
+        w2: "Să fie surjectivă.",
+        src: "Formule_BAC.pdf - Subiectul I.2"
+    },
+    {
+        q: "Cum se definește o funcție strict crescătoare?",
+        a: "x_1 < x_2 implică f(x_1) < f(x_2)",
+        w1: "x_1 < x_2 implică f(x_1) > f(x_2)",
+        w2: "f(-x) = f(x)",
+        src: "Formule_BAC.pdf - Subiectul I.2"
+    },
+    {
+        q: "Cum se definește o funcție strict descrescătoare?",
+        a: "x_1 < x_2 implică f(x_1) > f(x_2)",
+        w1: "x_1 < x_2 implică f(x_1) < f(x_2)",
+        w2: "f(-x) = -f(x)",
+        src: "Formule_BAC.pdf - Subiectul I.2"
+    },
+
+    // --- FUNCȚIA DE GRADUL I ---
+    {
+        q: "Care este forma generală a funcției de gradul I?",
+        a: "f(x) = ax + b",
+        w1: "f(x) = ax^2 + bx + c",
+        w2: "f(x) = \\frac{a}{x}",
+        src: "Formule_BAC.pdf - Subiectul I.2"
+    },
+    {
+        q: "Cum este monotonia funcției de gradul I f(x) = ax + b dacă a > 0?",
+        a: "Strict crescătoare",
+        w1: "Strict descrescătoare",
+        w2: "Constantă",
+        src: "Formule_BAC.pdf - Subiectul I.2"
+    },
+    {
+        q: "Cum este monotonia funcției de gradul I f(x) = ax + b dacă a < 0?",
+        a: "Strict descrescătoare",
+        w1: "Strict crescătoare",
+        w2: "Constantă",
+        src: "Formule_BAC.pdf - Subiectul I.2"
+    },
+    {
+        q: "Cum se determină semnul funcției de gradul I f(x) = ax + b?",
+        a: "Se rezolvă ecuația ax + b = 0. Semnul este contrar lui a între rădăcini și ca a în exterior.",
+        w1: "Funcția este mereu pozitivă.",
+        w2: "Funcția este mereu negativă.",
+        src: "Formule_BAC.pdf - Subiectul I.2"
+    },
+
+    // --- FUNCȚIA DE GRADUL al II-lea ---
+    {
+        q: "Care este forma generală a funcției de gradul al II-lea?",
+        a: "f(x) = ax^2 + bx + c",
+        w1: "f(x) = ax + b",
+        w2: "f(x) = ax^3 + bx^2 + cx + d",
+        src: "Formule_BAC.pdf - Subiectul I.2"
+    },
+    {
+        q: "Cum se numește Δ = b^2 - 4ac?",
+        a: "Determinantul ecuației de gradul al doilea.",
+        w1: "Rădăcina ecuației.",
+        w2: "Coeficientul dominant.",
+        src: "Formule_BAC.pdf - Subiectul I.2"
+    },
+    {
+        q: "Câte soluții reale are ecuația de gradul al II-lea dacă Δ > 0?",
+        a: "Două soluții reale distincte.",
+        w1: "O singură soluție reală.",
+        w2: "Nicio soluție reală.",
+        src: "Formule_BAC.pdf - Subiectul I.2"
+    },
+    {
+        q: "Câte soluții reale are ecuația de gradul al II-lea dacă Δ = 0?",
+        a: "O singură soluție reală (dublă).",
+        w1: "Două soluții reale distincte.",
+        w2: "Nicio soluție reală.",
+        src: "Formule_BAC.pdf - Subiectul I.2"
+    },
+    {
+        q: "Câte soluții reale are ecuația de gradul al II-lea dacă Δ < 0?",
+        a: "Nicio soluție reală.",
+        w1: "O singură soluție reală.",
+        w2: "Două soluții reale distincte.",
+        src: "Formule_BAC.pdf - Subiectul I.2"
+    },
+    {
+        q: "Care sunt relațiile lui Viete pentru ecuația ax^2 + bx + c = 0 (x_1, x_2)?",
+        a: "x_1 + x_2 = -\\frac{b}{a} și x_1 x_2 = \\frac{c}{a}",
+        w1: "x_1 + x_2 = \\frac{b}{a} și x_1 x_2 = -\\frac{c}{a}",
+        w2: "x_1 - x_2 = -\\frac{b}{a} și x_1 x_2 = \\frac{c}{a}",
+        src: "Formule_BAC.pdf - Subiectul I.2"
+    },
+    {
+        q: "Care sunt coordonatele vârfului parabolei f(x) = ax^2 + bx + c?",
+        a: "V(-\\frac{b}{2a}, -\\frac{\\Delta}{4a})",
+        w1: "V(\\frac{b}{2a}, \\frac{\\Delta}{4a})",
+        w2: "V(-\\frac{b}{2a}, \\frac{\\Delta}{4a})",
+        src: "Formule_BAC.pdf - Subiectul I.2"
+    },
+    {
+        q: "Dacă a > 0, funcția de gradul al II-lea admite?",
+        a: "Minim",
+        w1: "Maxim",
+        w2: "Niciun extrem",
+        src: "Formule_BAC.pdf - Subiectul I.2"
+    },
+    {
+        q: "Dacă a < 0, funcția de gradul al II-lea admite?",
+        a: "Maxim",
+        w1: "Minim",
+        w2: "Niciun extrem",
+        src: "Formule_BAC.pdf - Subiectul I.2"
+    },
+    {
+        q: "Care este ecuația axei de simetrie a parabolei f(x) = ax^2 + bx + c?",
+        a: "x = -\\frac{b}{2a}",
+        w1: "y = -\\frac{b}{2a}",
+        w2: "x = \\frac{b}{2a}",
+        src: "Formule_BAC.pdf - Subiectul I.2"
+    },
+
+    // --- ECUAȚII ---
+    {
+        q: "Cum se rezolvă o ecuație irațională de tipul \\sqrt{f(x)} = g(x)?",
+        a: "1. Se pun condițiile de existență (f(x) >= 0, g(x) >= 0). 2. Se ridică la pătrat. 3. Se verifică soluțiile.",
+        w1: "Se ridică direct la pătrat și se rezolvă.",
+        w2: "Se izolează radicalul și se derivă.",
+        src: "Formule_BAC.pdf - Subiectul I.3"
+    },
+    {
+        q: "Cum se rezolvă o ecuație exponențială de tipul a^{f(x)} = a^{g(x)}?",
+        a: "f(x) = g(x)",
+        w1: "\\log_a f(x) = \\log_a g(x)",
+        w2: "f(x) \\cdot g(x) = 1",
+        src: "Formule_BAC.pdf - Subiectul I.3"
+    },
+    {
+        q: "Cum se rezolvă o ecuație logaritmică de tipul \\log_a f(x) = \\log_a g(x)?",
+        a: "f(x) = g(x) cu condițiile f(x) > 0 și g(x) > 0",
+        w1: "a^{f(x)} = a^{g(x)}",
+        w2: "f(x) + g(x) = 0",
+        src: "Formule_BAC.pdf - Subiectul I.3"
+    },
+    {
+        q: "Care este soluția generală pentru ecuația trigonometrică fundamentală \\sin x = a?",
+        a: "x = (-1)^k \\arcsin a + k\\pi",
+        w1: "x = \\pm \\arccos a + 2k\\pi",
+        w2: "x = \\arctan a + k\\pi",
+        src: "Formule_BAC.pdf - Subiectul I.3"
+    },
+    {
+        q: "Care este soluția generală pentru ecuația trigonometrică fundamentală \\cos x = a?",
+        a: "x = \\pm \\arccos a + 2k\\pi",
+        w1: "x = (-1)^k \\arcsin a + k\\pi",
+        w2: "x = \\arctan a + k\\pi",
+        src: "Formule_BAC.pdf - Subiectul I.3"
+    },
+
+    // --- METODE DE NUMĂRARE ---
+    {
+        q: "Ce numără permutările de n elemente?",
+        a: "Numărul de moduri de a aranja n elemente distincte.",
+        w1: "Numărul de submulțimi de k elemente dintr-o mulțime cu n elemente.",
+        w2: "Numărul de aranjamente de k elemente din n.",
+        src: "Formule_BAC.pdf - Subiectul I.4"
+    },
+    {
+        q: "Care este formula pentru permutări de n elemente, P_n?",
+        a: "n!",
+        w1: "\\frac{n!}{(n-k)!}",
+        w2: "\\frac{n!}{k!(n-k)!}",
+        src: "Formule_BAC.pdf - Subiectul I.4"
+    },
+    {
+        q: "Ce numără aranjamentele de n elemente luate câte k?",
+        a: "Numărul de moduri de a alege și aranja k elemente din n.",
+        w1: "Numărul de moduri de a aranja toate n elemente.",
+        w2: "Numărul de submulțimi de k elemente din n.",
+        src: "Formule_BAC.pdf - Subiectul I.4"
+    },
+    {
+        q: "Care este formula pentru aranjamente de n elemente luate câte k, A_n^k?",
+        a: "\\frac{n!}{(n-k)!}",
+        w1: "n!",
+        w2: "\\frac{n!}{k!(n-k)!}",
+        src: "Formule_BAC.pdf - Subiectul I.4"
+    },
+    {
+        q: "Ce numără combinările de n elemente luate câte k?",
+        a: "Numărul de submulțimi de k elemente dintr-o mulțime cu n elemente.",
+        w1: "Numărul de moduri de a alege și aranja k elemente din n.",
+        w2: "Numărul de moduri de a aranja toate n elemente.",
+        src: "Formule_BAC.pdf - Subiectul I.4"
+    },
+    {
+        q: "Care este formula pentru combinări de n elemente luate câte k, C_n^k?",
+        a: "\\frac{n!}{k!(n-k)!}",
+        w1: "n!",
+        w2: "\\frac{n!}{(n-k)!}",
+        src: "Formule_BAC.pdf - Subiectul I.4"
+    },
+    {
+        q: "Care este formula generală a binomului lui Newton pentru (a+b)^n?",
+        a: "\\sum_{k=0}^{n} C_n^k a^{n-k} b^k",
+        w1: "\\sum_{k=0}^{n} C_n^k a^k b^{n-k}",
+        w2: "a^n + b^n",
+        src: "Formule_BAC.pdf - Subiectul I.4"
+    },
+    {
+        q: "Care este suma coeficienților binomiali din dezvoltarea (a+b)^n?",
+        a: "2^n",
+        w1: "n",
+        w2: "0",
+        src: "Formule_BAC.pdf - Subiectul I.4"
+    },
+
+    // --- MATEMATICI FINANCIARE ---
+    {
+        q: "Care este formula pentru prețul final după o scumpire de p%?",
+        a: "P_f = P_i \\cdot (1 + \\frac{p}{100})",
+        w1: "P_f = P_i \\cdot (1 - \\frac{p}{100})",
+        w2: "P_f = P_i + p",
+        src: "Formule_BAC.pdf - Subiectul I.4"
+    },
+    {
+        q: "Care este formula pentru prețul final după o reducere de p%?",
+        a: "P_f = P_i \\cdot (1 - \\frac{p}{100})",
+        w1: "P_f = P_i \\cdot (1 + \\frac{p}{100})",
+        w2: "P_f = P_i - p",
+        src: "Formule_BAC.pdf - Subiectul I.4"
+    },
+    {
+        q: "Care este formula pentru dobânda simplă (D)?",
+        a: "D = S \\cdot \\frac{r}{100} \\cdot n",
+        w1: "D = S \\cdot (1 + \\frac{r}{100})^n",
+        w2: "D = S + S \\cdot \\frac{r}{100} \\cdot n",
+        src: "Formule_BAC.pdf - Subiectul I.4"
+    },
+    {
+        q: "Care este formula pentru suma finală la dobânda compusă?",
+        a: "S_n = S_0 \\cdot (1 + \\frac{r}{100})^n",
+        w1: "S_n = S_0 + S_0 \\cdot \\frac{r}{100} \\cdot n",
+        w2: "S_n = S_0 \\cdot (1 - \\frac{r}{100})^n",
+        src: "Formule_BAC.pdf - Subiectul I.4"
+    },
+
+    // --- GEOMETRIE ANALITICĂ ---
+    {
+        q: "Care este formula pentru distanța dintre două puncte A(x_A, y_A) și B(x_B, y_B)?",
+        a: "AB = \\sqrt{(x_B - x_A)^2 + (y_B - y_A)^2}",
+        w1: "AB = (x_B - x_A)^2 + (y_B - y_A)^2",
+        w2: "AB = |x_B - x_A| + |y_B - y_A|",
+        src: "Formule_BAC.pdf - Subiectul I.5"
+    },
+    {
+        q: "Care sunt coordonatele mijlocului segmentului AB, cu A(x_A, y_A) și B(x_B, y_B)?",
+        a: "M(\\frac{x_A + x_B}{2}, \\frac{y_A + y_B}{2})",
+        w1: "M(x_B - x_A, y_B - y_A)",
+        w2: "M(\\frac{x_A + x_B}{2}, \\frac{y_A - y_B}{2})",
+        src: "Formule_BAC.pdf - Subiectul I.5"
+    },
+    {
+        q: "Care este formula pentru panta dreptei care trece prin A(x_A, y_A) și B(x_B, y_B)?",
+        a: "m = \\frac{y_B - y_A}{x_B - x_A}",
+        w1: "m = \\frac{x_B - x_A}{y_B - y_A}",
+        w2: "m = y_B - y_A - (x_B - x_A)",
+        src: "Formule_BAC.pdf - Subiectul I.5"
+    },
+    {
+        q: "Care este condiția de coliniaritate pentru trei puncte A(x_A, y_A), B(x_B, y_B), C(x_C, y_C)?",
+        a: "\\frac{y_B - y_A}{x_B - x_A} = \\frac{y_C - y_A}{x_C - x_A}",
+        w1: "x_A + x_B + x_C = 0",
+        w2: "y_A + y_B + y_C = 0",
+        src: "Formule_BAC.pdf - Subiectul I.5"
+    },
+    {
+        q: "Care este formula pentru aria unui triunghi cu vârfurile A(x_A, y_A), B(x_B, y_B), C(x_C, y_C)?",
+        a: "Aria = \\frac{1}{2} |x_A(y_B - y_C) + x_B(y_C - y_A) + x_C(y_A - y_B)|",
+        w1: "Aria = (x_A + x_B + x_C) \\cdot (y_A + y_B + y_C)",
+        w2: "Aria = \\sqrt{(x_B - x_A)^2 + (y_B - y_A)^2}",
+        src: "Formule_BAC.pdf - Subiectul I.5"
+    },
+    {
+        q: "Care este formula pentru distanța de la punctul P(x_0, y_0) la dreapta ax + by + c = 0?",
+        a: "d(P, d) = \\frac{|ax_0 + by_0 + c|}{\\sqrt{a^2 + b^2}}",
+        w1: "d(P, d) = ax_0 + by_0 + c",
+        w2: "d(P, d) = \\sqrt{a^2 + b^2}",
+        src: "Formule_BAC.pdf - Subiectul I.5"
+    },
+    {
+        q: "Care sunt coordonatele centrului de greutate G al triunghiului ABC?",
+        a: "G(\\frac{x_A + x_B + x_C}{3}, \\frac{y_A + y_B + y_C}{3})",
+        w1: "G(\\frac{x_A + x_B + x_C}{2}, \\frac{y_A + y_B + y_C}{2})",
+        w2: "G(x_A + x_B + x_C, y_A + y_B + y_C)",
+        src: "Formule_BAC.pdf - Subiectul I.5"
+    },
+
+    // --- VECTORI ---
+    {
+        q: "Cum se definește un vector?",
+        a: "O mărime caracterizată prin direcție, sens și lungime (modul).",
+        w1: "Un punct în spațiu.",
+        w2: "Un număr real.",
+        src: "Formule_BAC.pdf - Subiectul I.5"
+    },
+    {
+        q: "Când sunt doi vectori coliniari?",
+        a: "Dacă au aceeași direcție.",
+        w1: "Dacă au același sens.",
+        w2: "Dacă au aceeași lungime.",
+        src: "Formule_BAC.pdf - Subiectul I.5"
+    },
+    {
+        q: "Când sunt doi vectori egali?",
+        a: "Dacă au aceeași direcție, sens și lungime.",
+        w1: "Dacă au aceeași lungime.",
+        w2: "Dacă au aceeași direcție.",
+        src: "Formule_BAC.pdf - Subiectul I.5"
+    },
+    {
+        q: "Cum se adună doi vectori conform regulii paralelogramului?",
+        a: "Vectorul sumă este diagonala paralelogramului construit pe cei doi vectori.",
+        w1: "Vectorul sumă este latura opusă celui de-al treilea vârf al triunghiului.",
+        w2: "Vectorul sumă este suma lungimilor celor doi vectori.",
+        src: "Formule_BAC.pdf - Subiectul I.5"
+    },
+    {
+        q: "Care este formula pentru coordonatele vectorului \\vec{AB} dacă A(x_A, y_A) și B(x_B, y_B)?",
+        a: "\\vec{AB}(x_B - x_A, y_B - y_A)",
+        w1: "\\vec{AB}(x_A - x_B, y_A - y_B)",
+        w2: "\\vec{AB}(\\frac{x_A + x_B}{2}, \\frac{y_A + y_B}{2})",
+        src: "Formule_BAC.pdf - Subiectul I.5"
+    },
+    {
+        q: "Care este formula pentru modulul (lungimea) vectorului \\vec{v}(x, y)?",
+        a: "|\\vec{v}| = \\sqrt{x^2 + y^2}",
+        w1: "|\\vec{v}| = x^2 + y^2",
+        w2: "|\\vec{v}| = x + y",
+        src: "Formule_BAC.pdf - Subiectul I.5"
+    },
+    {
+        q: "Care este formula pentru produsul scalar a doi vectori \\vec{u}(x_1, y_1) și \\vec{v}(x_2, y_2)?",
+        a: "\\vec{u} \\cdot \\vec{v} = x_1 x_2 + y_1 y_2",
+        w1: "\\vec{u} \\cdot \\vec{v} = \\sqrt{x_1^2 + y_1^2} \\cdot \\sqrt{x_2^2 + y_2^2}",
+        w2: "\\vec{u} \\cdot \\vec{v} = (x_1 + x_2, y_1 + y_2)",
+        src: "Formule_BAC.pdf - Subiectul I.5"
+    },
+
+    // --- ELEMENTE DE TRIGONOMETRIE ---
+    {
+        q: "Ce reprezintă cercul trigonometric?",
+        a: "Cercul cu centru în origine și raza 1, folosit pentru definirea funcțiilor trigonometrice.",
+        w1: "Un cerc oarecare în plan.",
+        w2: "Graficul funcției sinus.",
+        src: "Formule_BAC.pdf - Subiectul I.6"
+    },
+    {
+        q: "Care este valoarea lui \\sin(\\frac{\\pi}{2})?",
+        a: "1",
+        w1: "0",
+        w2: "-1",
+        src: "Formule_BAC.pdf - Subiectul I.6"
+    },
+    {
+        q: "Care este valoarea lui \\cos(\\pi)?",
+        a: "-1",
+        w1: "1",
+        w2: "0",
+        src: "Formule_BAC.pdf - Subiectul I.6"
+    },
+    {
+        q: "Care este formula fundamentală a trigonometriei?",
+        a: "\\sin^2 x + \\cos^2 x = 1",
+        w1: "\\sin x + \\cos x = 1",
+        w2: "\\tan x = \\frac{\\sin x}{\\cos x}",
+        src: "Formule_BAC.pdf - Subiectul I.6"
+    },
+    {
+        q: "Care este formula pentru tangență în funcție de sinus și cosinus?",
+        a: "\\tan x = \\frac{\\sin x}{\\cos x}",
+        w1: "\\tan x = \\frac{\\cos x}{\\sin x}",
+        w2: "\\tan x = \\sin x \\cdot \\cos x",
+        src: "Formule_BAC.pdf - Subiectul I.6"
+    },
+    {
+        q: "Ce funcție trigonometrică este pară?",
+        a: "\\cos x",
+        w1: "\\sin x",
+        w2: "\\tan x",
+        src: "Formule_BAC.pdf - Subiectul I.6"
+    },
+    {
+        q: "Ce funcție trigonometrică este impară?",
+        a: "\\sin x",
+        w1: "\\cos x",
+        w2: "|\\sin x|",
+        src: "Formule_BAC.pdf - Subiectul I.6"
+    },
+    {
+        q: "Care este perioada principală a funcțiilor \\sin x și \\cos x?",
+        a: "2\\pi",
+        w1: "\\pi",
+        w2: "\\frac{\\pi}{2}",
+        src: "Formule_BAC.pdf - Subiectul I.6"
+    },
+    {
+        q: "Care este teorema cosinusului pentru un triunghi cu laturile a, b, c și unghiul opus lui c, notat cu \\gamma?",
+        a: "c^2 = a^2 + b^2 - 2ab \\cos \\gamma",
+        w1: "c^2 = a^2 + b^2 + 2ab \\cos \\gamma",
+        w2: "\\frac{a}{\\sin \\alpha} = \\frac{c}{\\sin \\gamma}",
+        src: "Formule_BAC.pdf - Subiectul I.6"
+    },
+    {
+        q: "Care este teorema sinusurilor pentru un triunghi cu laturile a, b, c și unghiurile opuse \\alpha, \\beta, \\gamma?",
+        a: "\\frac{a}{\\sin \\alpha} = \\frac{b}{\\sin \\beta} = \\frac{c}{\\sin \\gamma} = 2R",
+        w1: "c^2 = a^2 + b^2 - 2ab \\cos \\gamma",
+        w2: "Aria = \\frac{1}{2}ab \\sin \\gamma",
+        src: "Formule_BAC.pdf - Subiectul I.6"
+    },
+    {
+        q: "Care este formula pentru aria unui triunghi oarecare folosind două laturi și unghiul cuprins?",
+        a: "Aria = \\frac{1}{2}ab \\sin \\gamma",
+        w1: "Aria = \\frac{a+b+c}{2}",
+        w2: "Aria = \\frac{a \\cdot h_a}{2}",
+        src: "Formule_BAC.pdf - Subiectul I.6"
+    },
+
+    // --- ELEMENTE DE CALCUL MATRICEAL ---
+    {
+        q: "Ce este o permutare de grad n?",
+        a: "O aranjare a numerelor 1, 2, ..., n într-o anumită ordine.",
+        w1: "O submulțime a mulțimii {1, 2, ..., n}.",
+        w2: "Un șir de n numere reale.",
+        src: "Formule_BAC.pdf - Subiectul II.1"
+    },
+    {
+        q: "Ce este o matrice pătratică de ordin n?",
+        a: "O matrice cu n linii și n coloane.",
+        w1: "O matrice cu 2 linii și n coloane.",
+        w2: "O matrice cu un singur element.",
+        src: "Formule_BAC.pdf - Subiectul II.1"
+    },
+    {
+        q: "Ce este matricea unitate I_n?",
+        a: "Matricea pătratică cu 1 pe diagonala principală și 0 în rest.",
+        w1: "Matricea cu toate elementele egale cu 1.",
+        w2: "Matricea cu toate elementele egale cu 0.",
+        src: "Formule_BAC.pdf - Subiectul II.1"
+    },
+    {
+        q: "Ce este determinantul unei matrice?",
+        a: "Un număr asociat matricei pătratice, calculat printr-o regulă specifică.",
+        w1: "O altă matrice obținută prin transpunere.",
+        w2: "Produsul elementelor de pe diagonala principală.",
+        src: "Formule_BAC.pdf - Subiectul II.1"
+    },
+    {
+        q: "Ce proprietate are determinantul dacă două linii (sau coloane) sunt identice?",
+        a: "Determinantul este zero.",
+        w1: "Determinantul se înjumătățește.",
+        w2: "Determinantul se dublează.",
+        src: "Formule_BAC.pdf - Subiectul II.1"
+    },
+    {
+        q: "Când este o matrice A inversabilă?",
+        a: "Dacă determinantul său este nenul (det A \\neq 0).",
+        w1: "Dacă este matrice pătratică.",
+        w2: "Dacă toate elementele sale sunt nenule.",
+        src: "Formule_BAC.pdf - Subiectul II.1"
+    },
+    {
+        q: "Cum se numește un sistem liniar care are cel puțin o soluție?",
+        a: "Compatibil",
+        w1: "Incompatibil",
+        w2: "Homogen",
+        src: "Formule_BAC.pdf - Subiectul II.1"
+    },
+    {
+        q: "Cum se numește un sistem liniar compatibil care are o singură soluție?",
+        a: "Determinat",
+        w1: "Nedeterminat",
+        w2: "Incompatibil",
+        src: "Formule_BAC.pdf - Subiectul II.1"
+    },
+
+    // --- POLINOAME ---
+    {
+        q: "Care este gradul polinomului nul?",
+        a: "Nedefinit (sau -\\infty)",
+        w1: "0",
+        w2: "1",
+        src: "Formule_BAC.pdf - Subiectul II.2"
+    },
+    {
+        q: "Ce spune teorema restului la împărțirea polinoamelui?",
+        a: "Restul împărțirii polinomului P(x) la (x - x_0) este P(x_0).",
+        w1: "Câtul împărțirii este P'(x).",
+        w2: "Restul este întotdeauna 0.",
+        src: "Formule_BAC.pdf - Subiectul II.2"
+    },
+    {
+        q: "Conform teoremei lui Bézout, când este x_0 rădăcină a polinomului P(x)?",
+        a: "Dacă P(x_0) = 0",
+        w1: "Dacă P'(x_0) = 0",
+        w2: "Dacă x_0 este coeficientul dominant.",
+        src: "Formule_BAC.pdf - Subiectul II.2"
+    },
+    {
+        q: "Ce înseamnă că un polinom este reductibil peste corpul K?",
+        a: "Poate fi scris ca produs de două polinoame nenule din K[x].",
+        w1: "Are toate rădăcinile în K.",
+        w2: "Nu poate fi descompus în factori.",
+        src: "Formule_BAC.pdf - Subiectul II.2"
+    },
+    {
+        q: "Pentru ecuația algebrică cu coeficienți întregi, ce proprietate au rădăcinile întregi?",
+        a: "Sunt divizori ai termenului liber.",
+        w1: "Sunt divizori ai coeficientului dominant.",
+        w2: "Sunt numere prime.",
+        src: "Formule_BAC.pdf - Subiectul II.2"
+    },
+
+    // --- ELEMENTE DE ANALIZĂ MATEMATICĂ (Derivate) ---
+    {
+        q: "Care este derivata funcției f(x) = c (constantă)?",
+        a: "f'(x) = 0",
+        w1: "f'(x) = 1",
+        w2: "f'(x) = c",
+        src: "Formule_BAC.pdf - Subiectul III.1"
+    },
+    {
+        q: "Care este derivata funcției f(x) = x^n?",
+        a: "f'(x) = n x^{n-1}",
+        w1: "f'(x) = x^{n+1}",
+        w2: "f'(x) = n^n",
+        src: "Formule_BAC.pdf - Subiectul III.1"
+    },
+    {
+        q: "Care este derivata funcției f(x) = e^x?",
+        a: "f'(x) = e^x",
+        w1: "f'(x) = x e^{x-1}",
+        w2: "f'(x) = \\ln x",
+        src: "Formule_BAC.pdf - Subiectul III.1"
+    },
+    {
+        q: "Care este derivata funcției f(x) = \\ln x?",
+        a: "f'(x) = \\frac{1}{x}",
+        w1: "f'(x) = x",
+        w2: "f'(x) = -\\frac{1}{x^2}",
+        src: "Formule_BAC.pdf - Subiectul III.1"
+    },
+    {
+        q: "Care este derivata funcției f(x) = \\sin x?",
+        a: "f'(x) = \\cos x",
+        w1: "f'(x) = -\\cos x",
+        w2: "f'(x) = \\sin x",
+        src: "Formule_BAC.pdf - Subiectul III.1"
+    },
+    {
+        q: "Care este derivata funcției f(x) = \\cos x?",
+        a: "f'(x) = -\\sin x",
+        w1: "f'(x) = \\sin x",
+        w2: "f'(x) = \\cos x",
+        src: "Formule_BAC.pdf - Subiectul III.1"
+    },
+    {
+        q: "Care este regula de derivare pentru produs: (f \\cdot g)'?",
+        a: "f' \\cdot g + f \\cdot g'",
+        w1: "f' \\cdot g'",
+        w2: "\\frac{f' \\cdot g - f \\cdot g'}{g^2}",
+        src: "Formule_BAC.pdf - Subiectul III.1"
+    },
+    {
+        q: "Care este regula de derivare pentru cât: (\\frac{f}{g})'?",
+        a: "\\frac{f' \\cdot g - f \\cdot g'}{g^2}",
+        w1: "f' \\cdot g + f \\cdot g'",
+        w2: "\\frac{f' \\cdot g + f \\cdot g'}{g^2}",
+        src: "Formule_BAC.pdf - Subiectul III.1"
+    },
+    {
+        q: "Ce spune teorema lui Fermat despre punctele de extrem?",
+        a: "Dacă f are un extrem local în x_0 și este derivabilă acolo, atunci f'(x_0) = 0.",
+        w1: "Dacă f'(x_0) = 0, atunci f are un extrem în x_0.",
+        w2: "f''(x_0) = 0",
+        src: "Formule_BAC.pdf - Subiectul III.1"
+    },
+    {
+        q: "Cum se determină punctele de inflexiune ale unei funcții?",
+        a: "Rezolvând ecuația f''(x) = 0 și verificând schimbarea de concavitate.",
+        w1: "Rezolvând ecuația f'(x) = 0.",
+        w2: "Calculând f(x) = 0.",
+        src: "Formule_BAC.pdf - Subiectul III.1"
+    },
+
+    // --- ELEMENTE DE ANALIZĂ MATEMATICĂ (Primitive și Integrale) ---
+    {
+        q: "Ce este o primitivă a funcției f?",
+        a: "O funcție F astfel încât F' = f.",
+        w1: "O funcție F astfel încât F = f'.",
+        w2: "O funcție F astfel încât F \\cdot f = 1.",
+        src: "Formule_BAC.pdf - Subiectul III.2"
+    },
+    {
+        q: "Care este o primitivă pentru f(x) = x^n (n \\neq -1)?",
+        a: "\\frac{x^{n+1}}{n+1} + C",
+        w1: "x^{n+1} + C",
+        w2: "\\frac{1}{n+1} x^n + C",
+        src: "Formule_BAC.pdf - Subiectul III.2"
+    },
+    {
+        q: "Care este o primitivă pentru f(x) = \\frac{1}{x}?",
+        a: "\\ln |x| + C",
+        w1: "\\frac{x^{-2}}{-2} + C",
+        w2: "e^x + C",
+        src: "Formule_BAC.pdf - Subiectul III.2"
+    },
+    {
+        q: "Care este o primitivă pentru f(x) = e^x?",
+        a: "e^x + C",
+        w1: "\\ln x + C",
+        w2: "x e^x + C",
+        src: "Formule_BAC.pdf - Subiectul III.2"
+    },
+    {
+        q: "Care este o primitivă pentru f(x) = \\sin x?",
+        a: "-\\cos x + C",
+        w1: "\\cos x + C",
+        w2: "\\sin x + C",
+        src: "Formule_BAC.pdf - Subiectul III.2"
+    },
+    {
+        q: "Ce spune formula lui Leibniz-Newton pentru integralele definite?",
+        a: "\\int_a^b f(x) dx = F(b) - F(a)",
+        w1: "\\int_a^b f(x) dx = F(a) - F(b)",
+        w2: "\\int_a^b f(x) dx = F(a) \\cdot F(b)",
+        src: "Formule_BAC.pdf - Subiectul III.2"
+    },
+    {
+        q: "Cum se calculează aria suprafeței delimitate de graficul lui f(x), axa Ox și dreptele x=a, x=b?",
+        a: "A = \\int_a^b |f(x)| dx",
+        w1: "A = f(b) - f(a)",
+        w2: "A = \\frac{f(a) + f(b)}{2} (b-a)",
+        src: "Formule_BAC.pdf - Subiectul III.2"
+    },
+    {
+        q: "Ce este metoda integrării prin părți?",
+        a: "\\int u dv = uv - \\int v du",
+        w1: "\\int (u+v) dx = \\int u dx + \\int v dx",
+        w2: "\\int k u dx = k \\int u dx",
+        src: "Formule_BAC.pdf - Subiectul III.2"
+    },
+
+
+
+
+
+
+    // PAGINA 1: PROGRESII ARITMETICE ȘI GEOMETRICE (grok)
+    {
+        q: "Care este formula de recurență pentru o progresie aritmetică?",
+        a: "a_{n+1} = a_n + r, \\forall n \\in \\mathbb{N}^*",
+        w1: "a_{n+1} = a_n \\cdot r",
+        w2: "a_{n+1} = a_n - r",
+        src: "Pag. 1"
+    },
+    {
+        q: "Rația unei progresii aritmetice este:",
+        a: "r = a_{n+1} - a_n, \\forall n \\in \\mathbb{N}^*",
+        w1: "r = \\frac{a_{n+1}}{a_n}",
+        w2: "r = a_n - a_1",
+        src: "Pag. 1"
+    },
+    {
+        q: "Formula termenului general al unei progresii aritmetice este:",
+        a: "a_n = a_1 + (n-1)r, \\forall n \\in \\mathbb{N}^*",
+        w1: "a_n = a_1 \\cdot r^{n-1}",
+        w2: "a_n = a_1 + n r",
+        src: "Pag. 1"
+    },
+    {
+        q: "Formula sumei primilor n termeni ai unei progresii aritmetice (varianta 1):",
+        a: "S_n = \\frac{n}{2} (a_1 + a_n)",
+        w1: "S_n = \\frac{n}{2} (a_1 + r)",
+        w2: "S_n = n (a_1 + a_n)",
+        src: "Pag. 1"
+    },
+    {
+        q: "Formula sumei primilor n termeni ai unei progresii aritmetice (varianta 2):",
+        a: "S_n = \\frac{n}{2} [2a_1 + (n-1)r]",
+        w1: "S_n = \\frac{n}{2} [a_1 + (n-1)r]",
+        w2: "S_n = n [2a_1 + (n-1)r]",
+        src: "Pag. 1"
+    },
+    {
+        q: "Condiția ca A, B, C să fie termeni consecutivi într-o progresie aritmetică:",
+        a: "2B = A + C",
+        w1: "B^2 = A \\cdot C",
+        w2: "B = A + C",
+        src: "Pag. 1"
+    },
+    {
+        q: "Formula de recurență pentru o progresie geometrică:",
+        a: "b_{n+1} = b_n \\cdot q, \\forall n \\in \\mathbb{N}^*",
+        w1: "b_{n+1} = b_n + q",
+        w2: "b_{n+1} = b_n / q",
+        src: "Pag. 1"
+    },
+    {
+        q: "Rația unei progresii geometrice este:",
+        a: "q = \\frac{b_{n+1}}{b_n}, \\forall n \\in \\mathbb{N}^*",
+        w1: "q = b_{n+1} - b_n",
+        w2: "q = b_n / b_1",
+        src: "Pag. 1"
+    },
+    {
+        q: "Formula termenului general al unei progresii geometrice:",
+        a: "b_n = b_1 \\cdot q^{n-1}, \\forall n \\in \\mathbb{N}^*",
+        w1: "b_n = b_1 + (n-1)q",
+        w2: "b_n = b_1 \\cdot q^n",
+        src: "Pag. 1"
+    },
+    {
+        q: "Formula sumei primilor n termeni ai unei progresii geometrice (q ≠ 1):",
+        a: "S_n = b_1 \\frac{q^n - 1}{q - 1}",
+        w1: "S_n = b_1 \\frac{1 - q^n}{1 - q}",
+        w2: "S_n = \\frac{n}{2} (b_1 + b_n)",
+        src: "Pag. 1"
+    },
+    {
+        q: "Condiția ca A, B, C să fie termeni consecutivi într-o progresie geometrică:",
+        a: "B^2 = A \\cdot C",
+        w1: "2B = A + C",
+        w2: "B = A + C",
+        src: "Pag. 1"
+    },
+
+    // PAGINA 2: LOGARITMI
+    {
+        q: "Definiția logaritmului:",
+        a: "a^N = X \\Leftrightarrow \\log_a X = N, \\, a>0, \\, a≠1, \\, X>0",
+        w1: "a^N = X \\Leftrightarrow \\log_a X = N, \\, a>0",
+        w2: "a^N = X \\Leftrightarrow X = \\log_a N",
+        src: "Pag. 2"
+    },
+    {
+        q: "Condițiile de existență ale logaritmului:",
+        a: "a > 0, \\, a ≠ 1, \\, X > 0",
+        w1: "a > 0, \\, X > 0",
+        w2: "a ≥ 1, \\, X ≥ 0",
+        src: "Pag. 2"
+    },
+    {
+        q: "Logaritmul zecimal este:",
+        a: "\\lg X = \\log_{10} X",
+        w1: "\\lg X = \\log_e X",
+        w2: "\\lg X = \\log_2 X",
+        src: "Pag. 2"
+    },
+    {
+        q: "Logaritmul natural este:",
+        a: "\\ln X = \\log_e X, \\, e ≈ 2.718",
+        w1: "\\ln X = \\log_{10} X",
+        w2: "\\ln X = \\log_2 X",
+        src: "Pag. 2"
+    },
+    {
+        q: "Proprietate logaritmi: \\log_a 1 =",
+        a: "0",
+        w1: "1",
+        w2: "\\log_a a",
+        src: "Pag. 2"
+    },
+    {
+        q: "Proprietate logaritmi: \\log_a a =",
+        a: "1",
+        w1: "0",
+        w2: "a",
+        src: "Pag. 2"
+    },
+    {
+        q: "Proprietate logaritmi: \\log_a (X^Y) =",
+        a: "Y \\log_a X",
+        w1: "\\log_a X^Y",
+        w2: "Y / \\log_a X",
+        src: "Pag. 2"
+    },
+    {
+        q: "Proprietate logaritmi: \\log_a X + \\log_a Y =",
+        a: "\\log_a (X Y)",
+        w1: "\\log_a (X + Y)",
+        w2: "\\log_a (X / Y)",
+        src: "Pag. 2"
+    },
+    {
+        q: "Proprietate logaritmi: \\log_a (X/Y) =",
+        a: "\\log_a X - \\log_a Y",
+        w1: "\\log_a X + \\log_a Y",
+        w2: "\\log_a X \\cdot \\log_a Y",
+        src: "Pag. 2"
+    },
+    {
+        q: "Proprietate logaritmi: \\log_a \\sqrt[n]{X} =",
+        a: "\\frac{1}{n} \\log_a X",
+        w1: "n \\log_a X",
+        w2: "\\log_a X^n",
+        src: "Pag. 2"
+    },
+    {
+        q: "Proprietate logaritmi: \\log_a \\sqrt{X Y} =",
+        a: "\\frac{1}{2} (\\log_a X + \\log_a Y)",
+        w1: "\\frac{1}{2} \\log_a (X Y)",
+        w2: "\\log_a X \\cdot \\log_a Y",
+        src: "Pag. 2"
+    },
+    {
+        q: "Formula schimbare bază: \\log_a b =",
+        a: "\\frac{\\ln b}{\\ln a}",
+        w1: "\\frac{\\ln a}{\\ln b}",
+        w2: "\\ln (b/a)",
+        src: "Pag. 2"
+    },
+    {
+        q: "Monotonia funcției logaritmice dacă a > 1:",
+        a: "strict crescătoare",
+        w1: "strict descrescătoare",
+        w2: "constantă",
+        src: "Pag. 2"
+    },
+    {
+        q: "Monotonia funcției exponențiale dacă a > 1:",
+        a: "strict crescătoare",
+        w1: "strict descrescătoare",
+        w2: "periodic",
+        src: "Pag. 2"
+    },
+
+    // PAGINA 3: PUTERI ȘI RADICALI
+    {
+        q: "Definiție putere:",
+        a: "a^n = a \\cdot a \\cdots a (n factori), \\, a \\in \\mathbb{R}, \\, n \\in \\mathbb{N}^*",
+        w1: "a^n = a / n",
+        w2: "a^n = \\sqrt[n]{a}",
+        src: "Pag. 3"
+    },
+    {
+        q: "Proprietate puteri: a^0 =",
+        a: "1",
+        w1: "0",
+        w2: "a",
+        src: "Pag. 3"
+    },
+    {
+        q: "Proprietate puteri: a^m \\cdot a^n =",
+        a: "a^{m+n}",
+        w1: "a^{m n}",
+        w2: "a^{m - n}",
+        src: "Pag. 3"
+    },
+    {
+        q: "Proprietate puteri: (a^m)^n =",
+        a: "a^{m n}",
+        w1: "a^{m + n}",
+        w2: "(a^n)^m",
+        src: "Pag. 3"
+    },
+    {
+        q: "Proprietate radicali: \\sqrt{a^2} =",
+        a: "|a|",
+        w1: "a",
+        w2: "-a",
+        src: "Pag. 3"
+    },
+    {
+        q: "Condiție existență radical ordin par:",
+        a: "expresia sub radical ≥ 0",
+        w1: "> 0",
+        w2: "orice real",
+        src: "Pag. 3"
+    },
+    {
+        q: "Proprietate radicali: \\sqrt[n]{a b} =",
+        a: "\\sqrt[n]{a} \\cdot \\sqrt[n]{b}",
+        w1: "\\sqrt[n]{a + b}",
+        w2: "\\frac{\\sqrt[n]{a}}{\\sqrt[n]{b}}",
+        src: "Pag. 3"
+    },
+
+    // PAGINA 4: NUMERE COMPLEXE
+    {
+        q: "Definiție număr complex:",
+        a: "z = a + b i, \\, a, b \\in \\mathbb{R}",
+        w1: "z = a + b / i",
+        w2: "z = a b i",
+        src: "Pag. 4"
+    },
+    {
+        q: "Modulul unui număr complex z = a + bi:",
+        a: "|z| = \\sqrt{a^2 + b^2}",
+        w1: "|z| = a^2 + b^2",
+        w2: "|z| = |a| + |b|",
+        src: "Pag. 4"
+    },
+    {
+        q: "Proprietate modul: |z \\bar{z}| =",
+        a: "|z|^2",
+        w1: "|z| \\cdot |\\bar{z}|",
+        w2: "0",
+        src: "Pag. 4"
+    },
+    {
+        q: "i^2 =",
+        a: "-1",
+        w1: "1",
+        w2: "i",
+        src: "Pag. 4"
+    },
+    {
+        q: "Rădăcinile ecuației ax^2 + bx + c = 0 (Δ ≥ 0):",
+        a: "x_{1,2} = \\frac{-b \\pm \\sqrt{\\Delta}}{2a}",
+        w1: "x_{1,2} = \\frac{b \\pm \\sqrt{\\Delta}}{2a}",
+        w2: "x_{1,2} = \\frac{-b \\pm \\sqrt{\\Delta}}{a}",
+        src: "Pag. 4"
+    },
+
+    // PAGINA 5: CALCUL PRESCURAT, PARTE ÎNTREAGĂ, MODUL
+    {
+        q: "Formula (a + b)^2 =",
+        a: "a^2 + 2ab + b^2",
+        w1: "a^2 + b^2",
+        w2: "a^2 - 2ab + b^2",
+        src: "Pag. 5"
+    },
+    {
+        q: "Definiție [x] (partea întreagă):",
+        a: "[x] este cel mai mare întreg ≤ x",
+        w1: "cel mai mic întreg ≥ x",
+        w2: "x rotunjit",
+        src: "Pag. 5"
+    },
+    {
+        q: "Partea fracționară {x} =",
+        a: "x - [x]",
+        w1: "[x] - x",
+        w2: "[x]",
+        src: "Pag. 5"
+    },
+    {
+        q: "Proprietate |x y| =",
+        a: "|x| |y|",
+        w1: "|x + y|",
+        w2: "|x| + |y|",
+        src: "Pag. 5"
+    },
+
+    // PAGINA 6-7: FUNCȚII
+    {
+        q: "Funcție pare: f(-x) =",
+        a: "f(x)",
+        w1: "-f(x)",
+        w2: "f(x) + 1",
+        src: "Pag. 7"
+    },
+    {
+        q: "Funcție periodică: f(x + T) =",
+        a: "f(x)",
+        w1: "-f(x)",
+        w2: "f(x) T",
+        src: "Pag. 7"
+    },
+    {
+        q: "Imaginea funcției Im f =",
+        a: "{ y | \\exists x \\in A, f(x) = y }",
+        w1: "{ x | f(x) \\in B }",
+        w2: "A",
+        src: "Pag. 7"
+    },
+    {
+        q: "Funcție injectivă: f(x_1) = f(x_2) ⇒",
+        a: "x_1 = x_2",
+        w1: "x_1 ≠ x_2",
+        w2: "f(x_1) ≠ f(x_2)",
+        src: "Pag. 7"
+    },
+
+    // PAGINA 8: GRAD I
+    {
+        q: "Monotonie funcție grad I dacă a > 0:",
+        a: "strict crescătoare",
+        w1: "strict descrescătoare",
+        w2: "constantă",
+        src: "Pag. 8"
+    },
+    {
+        q: "Rădăcina funcției f(x) = a x + b = 0:",
+        a: "x = -b/a",
+        w1: "x = b/a",
+        w2: "x = a/b",
+        src: "Pag. 8"
+    },
+
+    // PAGINA 9: GRAD II
+    {
+        q: "Discriminantul Δ =",
+        a: "b^2 - 4 a c",
+        w1: "b^2 + 4 a c",
+        w2: "a^2 - b c",
+        src: "Pag. 9"
+    },
+    {
+        q: "Relație Viete: x_1 + x_2 =",
+        a: "-b/a",
+        w1: "b/a",
+        w2: "c/a",
+        src: "Pag. 9"
+    },
+    {
+        q: "Suma pătratelor rădăcinilor: x_1^2 + x_2^2 =",
+        a: "(x_1 + x_2)^2 - 2 x_1 x_2",
+        w1: "(x_1 x_2)^2",
+        w2: "x_1 + x_2",
+        src: "Pag. 9"
+    },
+
+    // PAGINA 10: GRAFIC GRAD II
+    {
+        q: "Coordonatele vârfului V:",
+        a: "(-b/(2a), f(-b/(2a)))",
+        w1: "(b/(2a), ...)",
+        w2: "(-a/b, ...)",
+        src: "Pag. 10"
+    },
+    {
+        q: "Axa de simetrie:",
+        a: "x = -b/(2a)",
+        w1: "y = -b/(2a)",
+        w2: "x = b/a",
+        src: "Pag. 10"
+    },
+    {
+        q: "Dacă a < 0, funcția admite:",
+        a: "maxim",
+        w1: "minim",
+        w2: "inflectare",
+        src: "Pag. 10"
+    },
+
+    // PAGINA 11: ECUAȚII
+    {
+        q: "Metoda pentru ecuații iraționale: √(f(x)) = g(x)",
+        a: "Ridică la pătrat și verifică C.E.",
+        w1: "Înmulțește cu radicalul",
+        w2: "Logaritmează",
+        src: "Pag. 11"
+    },
+    {
+        q: "Pentru ecuații exponențiale: a^{f(x)} = a^{g(x)} ⇒",
+        a: "f(x) = g(x)",
+        w1: "f(x) + g(x) = 0",
+        w2: "f(x) g(x) = 1",
+        src: "Pag. 11"
+    },
+    {
+        q: "Pentru log_a f(x) = log_a g(x) ⇒",
+        a: "f(x) = g(x) (cu C.E.)",
+        w1: "f(x) + g(x) = a",
+        w2: "f(x)^a = g(x)",
+        src: "Pag. 11"
+    },
+
+    // ==================== SUBIECTUL I.1 – PROGRESII ====================
+    { q: "Termenul general al unei progresii aritmetice este:", a: "a_n = a_1 + (n-1)r", w1: "a_n = a_1 · r^{n-1}", w2: "a_n = a_1 + nr", src: "Pag. 1" },
+    { q: "Rația unei progresii aritmetice este:", a: "r = a_{n+1} - a_n", w1: "r = a_{n+1}/a_n", w2: "r = a_n - a_1", src: "Pag. 1" },
+    { q: "Suma primilor n termeni ai unei PA (varianta clasică):", a: "S_n = \\frac{n}{2}(a_1 + a_n)", w1: "S_n = n(a_1 + a_n)", w2: "S_n = \\frac{n}{2}a_1", src: "Pag. 1" },
+    { q: "Suma primilor n termeni ai unei PA (varianta cu rație):", a: "S_n = \\frac{n}{2}[2a_1 + (n-1)r]", w1: "S_n = \\frac{n}{2}[a_1 + (n-1)r]", w2: "S_n = n[2a_1 + (n-1)r]", src: "Pag. 1" },
+    { q: "Condiția ca A, B, C să fie termeni consecutivi într-o progresie aritmetică:", a: "2B = A + C", w1: "B² = A·C", w2: "B = A + C", src: "Pag. 1" },
+    { q: "Termenul general al unei progresii geometrice este:", a: "b_n = b_1 · q^{n-1}", w1: "b_n = b_1 + (n-1)q", w2: "b_n = b_1 · q^n", src: "Pag. 1" },
+    { q: "Rația unei progresii geometrice este:", a: "q = \\frac{b_{n+1}}{b_n}", w1: "q = b_{n+1} - b_n", w2: "q = b_n - b_1", src: "Pag. 1" },
+    { q: "Suma primilor n termeni ai unei PG (q ≠ 1):", a: "S_n = b_1 \\frac{q^n - 1}{q - 1}", w1: "S_n = b_1 \\frac{1 - q^n}{1 - q}", w2: "S_n = \\frac{n}{2}(b_1 + b_n)", src: "Pag. 1" },
+    { q: "Condiția ca A, B, C să fie termeni consecutivi într-o progresie geometrică:", a: "B² = A·C", w1: "2B = A + C", w2: "B = \\sqrt{A+C}", src: "Pag. 1" },
+
+    // ==================== LOGARITMI ====================
+    { q: "Definiția logaritmului:", a: "a^x = N ⇔ log_a N = x", w1: "a^x = x ⇔ log_a N = N", w2: "log_a N = x ⇔ a^N = x", src: "Pag. 2" },
+    { q: "Condițiile de existență ale logaritmului:", a: "a > 0, a ≠ 1, N > 0", w1: "a > 0, N ≥ 0", w2: "a ≥ 1, N > 0", src: "Pag. 2" },
+    { q: "log_a 1 =", a: "0", w1: "1", w2: "a", src: "Pag. 2" },
+    { q: "log_a a =", a: "1", w1: "0", w2: "a", src: "Pag. 2" },
+    { q: "log_a (x·y) =", a: "log_a x + log_a y", w1: "log_a x - log_a y", w2: "log_a (x/y)", src: "Pag. 2" },
+    { q: "log_a (x/y) =", a: "log_a x - log_a y", w1: "log_a x + log_a y", w2: "log_a (x·y)", src: "Pag. 2" },
+    { q: "log_a (x^k) =", a: "k log_a x", w1: "log_a x^k", w2: "k / log_a x", src: "Pag. 2" },
+    { q: "Schimbarea bazei: log_a b =", a: "\\frac{\\log_c b}{\\log_c a}", w1: "\\frac{\\log_c a}{\\log_c b}", w2: "\\log_c (b/a)", src: "Pag. 2" },
+    { q: "Dacă a > 1, funcția f(x) = log_a x este:", a: "strict crescătoare", w1: "strict descrescătoare", w2: "constantă", src: "Pag. 2" },
+    { q: "Dacă 0 < a < 1, funcția f(x) = a^x este:", a: "strict descrescătoare", w1: "strict crescătoare", w2: "constantă", src: "Pag. 2" },
+
+    // ==================== PUTERI ȘI RADICALI ====================
+    { q: "a^0 =", a: "1", w1: "0", w2: "a", src: "Pag. 3" },
+    { q: "a^m · a^n =", a: "a^{m+n}", w1: "a^{m-n}", w2: "a^{mn}", src: "Pag. 3" },
+    { q: "(a^m)^n =", a: "a^{mn}", w1: "a^{m+n}", w2: "a^{m/n}", src: "Pag. 3" },
+    { q: "a^{-n} =", a: "\\frac{1}{a^n}", w1: "a^n", w2: "-a^n", src: "Pag. 3" },
+    { q: "\\sqrt{a^2} =", a: "|a|", w1: "a", w2: "-a", src: "Pag. 3" },
+    { q: "\\sqrt{a·b} =", a: "\\sqrt{a} · \\sqrt{b}", w1: "\\sqrt{a+b}", w2: "\\frac{\\sqrt{a}}{\\sqrt{b}}", src: "Pag. 3" },
+    { q: "Condiție de existență pentru radical de ordin par:", a: "expresia sub radical ≥ 0", w1: "expresia sub radical > 0", w2: "orice expresie", src: "Pag. 3" },
+
+    // ==================== NUMERE COMPLEXE ====================
+    { q: "Forma algebrică a unui număr complex:", a: "z = a + bi", w1: "z = a · bi", w2: "z = a/bi", src: "Pag. 4" },
+    { q: "Conjugatul lui z = a + bi este:", a: "\\bar{z} = a - bi", w1: "a + bi", w2: "-a - bi", src: "Pag. 4" },
+    { q: "Modulul |z| al lui z = a + bi este:", a: "\\sqrt{a^2 + b^2}", w1: "a^2 + b^2", w2: "|a| + |b|", src: "Pag. 4" },
+    { q: "|z_1 z_2| =", a: "|z_1| · |z_2|", w1: "|z_1| + |z_2|", w2: "|z_1 + z_2|", src: "Pag. 4" },
+    { q: "i^2 =", a: "-1", w1: "1", w2: "i", src: "Pag. 4" },
+    { q: "i^3 =", a: "-i", w1: "i", w2: "-1", src: "Pag. 4" },
+    { q: "i^4 =", a: "1", w1: "-1", w2: "i", src: "Pag. 4" },
+    { q: "Formula rădăcinilor ecuației de gradul II:", a: "x_{1,2} = \\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}", w1: "\\frac{-b \\pm \\sqrt{b^2 - 4ac}}{a}", w2: "\\frac{b \\pm \\sqrt{b^2 - 4ac}}{2a}", src: "Pag. 4" },
+
+    // ==================== FORMULE DE CALCUL PRESCURTAT ====================
+    { q: "(a + b)^2 =", a: "a^2 + 2ab + b^2", w1: "a^2 - 2ab + b^2", w2: "a^2 + b^2", src: "Pag. 5" },
+    { q: "(a - b)^2 =", a: "a^2 - 2ab + b^2", w1: "a^2 + 2ab + b^2", w2: "a^2 - b^2", src: "Pag. 5" },
+    { q: "a^2 - b^2 =", a: "(a - b)(a + b)", w1: "(a + b)^2", w2: "a^2 + b^2", src: "Pag. 5" },
+    { q: "(a + b)^3 =", a: "a^3 + 3a^2b + 3ab^2 + b^3", w1: "a^3 + b^3", w2: "a^3 - 3a^2b + 3ab^2 - b^3", src: "Pag. 5" },
+    { q: "Partea întreagă [x] este:", a: "cel mai mare întreg ≤ x", w1: "cel mai mic întreg ≥ x", w2: "x rotunjit la întreg", src: "Pag. 5" },
+    { q: "Partea fracționară {x} =", a: "x - [x]", w1: "[x] - x", w2: "[x]", src: "Pag. 5" },
+    { q: "|x| pentru x ≥ 0 =", a: "x", w1: "-x", w2: "0", src: "Pag. 5" },
+    { q: "|x| pentru x < 0 = ", a: "-x", w1: "x", w2: "0", src: "Pag. 5" },
+
+    // ==================== FUNCȚII – DEFINIȚII ====================
+    { q: "Funcție pară ⇔", a: "f(-x) = f(x)", w1: "f(-x) = -f(x)", w2: "f(-x) = f(x) + 1", src: "Pag. 7" },
+    { q: "Funcție impară ⇔", a: "f(-x) = -f(x)", w1: "f(-x) = f(x)", w2: "f(-x) = 1/f(x)", src: "Pag. 7" },
+    { q: "Funcție periodică cu perioadă T ⇔", a: "f(x + T) = f(x)", w1: "f(x + T) = -f(x)", w2: "f(x + T) = f(x) + T", src: "Pag. 7" },
+    { q: "Funcție injectivă ⇔", a: "f(x_1) = f(x_2) ⇒ x_1 = x_2", w1: "f(x_1) ≠ f(x_2)", w2: "x_1 = x_2 ⇒ f(x_1) = f(x_2)", src: "Pag. 7" },
+    { q: "Funcție bijectivă ⇔", a: "injectivă și surjectivă", w1: "injectivă sau surjectivă", w2: "inversabilă dar nu injectivă", src: "Pag. 7" },
+
+    // ==================== FUNCȚIA DE GRADUL I ====================
+    { q: "Dacă a > 0, funcția f(x) = ax + b este:", a: "strict crescătoare", w1: "strict descrescătoare", w2: "constantă", src: "Pag. 8" },
+    { q: "Rădăcina funcției f(x) = ax + b este:", a: "x = -b/a", w1: "x = b/a", w2: "x = -a/b", src: "Pag. 8" },
+
+    // ==================== FUNCȚIA DE GRADUL II ====================
+    { q: "Discriminantul Δ =", a: "b^2 - 4ac", w1: "b^2 + 4ac", w2: "4ac - b^2", src: "Pag. 9" },
+    { q: "Relațiile lui Viete: x_1 + x_2 =", a: "-b/a", w1: "b/a", w2: "c/a", src: "Pag. 9" },
+    { q: "Relațiile lui Viete: x_1 · x_2 =", a: "c/a", w1: "b/a", w2: "-c/a", src: "Pag. 9" },
+    { q: "Coordonatele vârfului parabolei:", a: "\\left( -\\frac{b}{2a}, \\; -\\frac{\\Delta}{4a} \\right)", w1: "\\left( \\frac{b}{2a}, \\; \\frac{\\Delta}{4a} \\right)", w2: "\\left( -\\frac{b}{a}, \\; c \\right)", src: "Pag. 10" },
+    { q: "Dacă a > 0, parabola are:", a: "minim", w1: "maxim", w2: "punct de inflexiune", src: "Pag. 10" },
+    { q: "Dacă a < 0, parabola are:", a: "maxim", w1: "minim", w2: "două vârfuri", src: "Pag. 10" },
+    { q: "Ecuația axei de simetrie:", a: "x = -b/(2a)", w1: "x = b/(2a)", w2: "y = -b/(2a)", src: "Pag. 10" },
+
+    // ==================== ECUAȚII ====================
+    { q: "Pentru ecuația √(f(x)) = g(x), primul pas este:", a: "g(x) ≥ 0 și f(x) ≥ 0", w1: "g(x) > 0 doar", w2: "f(x) = g(x)", src: "Pag. 11" },
+    { q: "Ecuație exponențială: a^{f(x)} = a^{g(x)} ⇒", a: "f(x) = g(x)", w1: "f(x) + g(x) = 0", w2: "f(x) · g(x) = 1", src: "Pag. 11" },
+    { q: "Ecuație logaritmică: log_a f(x) = log_a g(x) ⇒", a: "f(x) = g(x) (cu C.E. f(x)>0, g(x)>0, a>0, a≠1)", w1: "f(x) + g(x) = 1", w2: "f(x)^a = g(x)", src: "Pag. 11" },
+
+    // Bonus – întrebări frecvente BAC
+    { q: "Suma pătratelor rădăcinilor unei ecuații de grad II:", a: "x_1^2 + x_2^2 = (x_1 + x_2)^2 - 2x_1 x_2 = \\frac{b^2}{a^2} - \\frac{2c}{a}", w1: "\\frac{c^2}{a^2}", w2: "\\frac{b^2 - 2c}{a}", src: "Pag. 9" },
+    { q: "Dacă parabola intersectează axa Ox în două puncte ⇒", a: "Δ > 0", w1: "Δ < 0", w2: "Δ = 0", src: "Pag. 10" },
+    { q: "Dacă Δ = 0, parabola:", a: "atinge axa Ox (vârf pe axă)", w1: "nu atinge axa Ox", w2: "intersectează în două puncte", src: "Pag. 10" },
+    // Total: peste 200 întrebări – acoperă 100% formulele din PDF
+
+
+    //deepseek
+    { 
+        q: "Care este formula termenului general pentru o progresie aritmetică?", 
+        a: "a_n = a_1 + (n-1)r", 
+        w1: "a_n = a_1 \\cdot r^{n-1}", 
+        w2: "a_n = a_1 + nr", 
+        src: "Pag. 1" 
+    },
+    { 
+        q: "Care este formula termenului general pentru o progresie geometrică?", 
+        a: "b_n = b_1 \\cdot q^{n-1}", 
+        w1: "b_n = b_1 + (n-1)q", 
+        w2: "b_n = b_1 \\cdot n \\cdot q", 
+        src: "Pag. 1" 
+    },
+    { 
+        q: "Care este formula pentru suma primilor n termeni ai unei progresii aritmetice?", 
+        a: "S_n = \\frac{(a_1 + a_n) \\cdot n}{2}", 
+        w1: "S_n = a_1 \\cdot \\frac{q^n - 1}{q - 1}", 
+        w2: "S_n = n \\cdot a_1", 
+        src: "Pag. 1" 
+    },
+    { 
+        q: "Care este formula pentru suma primilor n termeni ai unei progresii geometrice cu q ≠ 1?", 
+        a: "S_n = \\frac{b_1(q^n - 1)}{q - 1}", 
+        w1: "S_n = \\frac{(b_1 + b_n) \\cdot n}{2}", 
+        w2: "S_n = b_1 \\cdot n", 
+        src: "Pag. 1" 
+    },
+    { 
+        q: "Când trei numere A, B, C sunt termeni consecutivi ai unei progresii aritmetice?", 
+        a: "2B = A + C", 
+        w1: "B^2 = A \\cdot C", 
+        w2: "B = \\frac{A + C}{3}", 
+        src: "Pag. 1" 
+    },
+
+    // === LOGARITMI ===
+    { 
+        q: "Care este definiția logaritmului?", 
+        a: "a^x = N \\Rightarrow x = \\log_a N", 
+        w1: "a^x = N \\Rightarrow x = \\ln N", 
+        w2: "x^a = N \\Rightarrow a = \\log_x N", 
+        src: "Pag. 2" 
+    },
+    { 
+        q: "Care este formula pentru logaritmul unui produs?", 
+        a: "\\log_a x + \\log_a y = \\log_a(x \\cdot y)", 
+        w1: "\\log_a x + \\log_a y = \\log_a(x + y)", 
+        w2: "\\log_a x \\cdot \\log_a y = \\log_a(x \\cdot y)", 
+        src: "Pag. 2" 
+    },
+    { 
+        q: "Care este formula pentru schimbarea bazei unui logaritm?", 
+        a: "\\log_a b = \\frac{\\log_c b}{\\log_c a}", 
+        w1: "\\log_a b = \\log_c a \\cdot \\log_c b", 
+        w2: "\\log_a b = \\frac{\\log_c a}{\\log_c b}", 
+        src: "Pag. 2" 
+    },
+
+    // === PUTERI SI RADICALI ===
+    { 
+        q: "a^m \\cdot a^n = ?", 
+        a: "a^{m+n}", 
+        w1: "a^{m \\cdot n}", 
+        w2: "a^{m+n+1}", 
+        src: "Pag. 3" 
+    },
+    { 
+        q: "\\frac{a^m}{a^n} = ?", 
+        a: "a^{m-n}", 
+        w1: "a^{m/n}", 
+        w2: "a^{n-m}", 
+        src: "Pag. 3" 
+    },
+    { 
+        q: "(a^m)^n = ?", 
+        a: "a^{m \\cdot n}", 
+        w1: "a^{m+n}", 
+        w2: "a^{m^n}", 
+        src: "Pag. 3" 
+    },
+    { 
+        q: "\\sqrt{a} \\cdot \\sqrt{b} = ?", 
+        a: "\\sqrt{a \\cdot b}", 
+        w1: "\\sqrt{a + b}", 
+        w2: "a \\cdot b", 
+        src: "Pag. 3" 
+    },
+
+    // === NUMERE COMPLEXE ===
+    { 
+        q: "Cum se calculează modulul unui număr complex z = a + bi?", 
+        a: "|z| = \\sqrt{a^2 + b^2}", 
+        w1: "|z| = a + b", 
+        w2: "|z| = a^2 + b^2", 
+        src: "Pag. 4" 
+    },
+    { 
+        q: "Care este conjugatul numărului complex z = a + bi?", 
+        a: "\\overline{z} = a - bi", 
+        w1: "\\overline{z} = -a - bi", 
+        w2: "\\overline{z} = b + ai", 
+        src: "Pag. 4" 
+    },
+
+    // === FORMULE DE CALCUL PRESCURTAT ===
+    { 
+        q: "a^2 - b^2 = ?", 
+        a: "(a - b)(a + b)", 
+        w1: "(a + b)^2", 
+        w2: "a^2 + b^2", 
+        src: "Pag. 5" 
+    },
+    { 
+        q: "(a + b)^2 = ?", 
+        a: "a^2 + 2ab + b^2", 
+        w1: "a^2 + b^2", 
+        w2: "a^2 - 2ab + b^2", 
+        src: "Pag. 5" 
+    },
+    { 
+        q: "a^3 - b^3 = ?", 
+        a: "(a - b)(a^2 + ab + b^2)", 
+        w1: "(a - b)^3", 
+        w2: "(a + b)(a^2 - ab + b^2)", 
+        src: "Pag. 5" 
+    },
+
+    // === FUNCTIA DE GRADUL I ===
+    { 
+        q: "Care este forma generală a funcției de gradul I?", 
+        a: "f(x) = ax + b, a ≠ 0", 
+        w1: "f(x) = ax^2 + bx + c", 
+        w2: "f(x) = \\frac{a}{x} + b", 
+        src: "Pag. 8" 
+    },
+    { 
+        q: "Când o funcție de gradul I este strict crescătoare?", 
+        a: "Când a > 0", 
+        w1: "Când a < 0", 
+        w2: "Când b > 0", 
+        src: "Pag. 8" 
+    },
+
+    // === FUNCTIA DE GRADUL II ===
+    { 
+        q: "Care este forma generală a funcției de gradul II?", 
+        a: "f(x) = ax^2 + bx + c, a ≠ 0", 
+        w1: "f(x) = ax + b", 
+        w2: "f(x) = ax^3 + bx^2 + cx + d", 
+        src: "Pag. 9" 
+    },
+    { 
+        q: "Care este formula discriminantului (Δ) pentru ecuația de gradul II?", 
+        a: "\\Delta = b^2 - 4ac", 
+        w1: "\\Delta = b^2 + 4ac", 
+        w2: "\\Delta = 4ac - b^2", 
+        src: "Pag. 9" 
+    },
+    { 
+        q: "Care sunt coordonatele vârfului parabolei?", 
+        a: "V(-\\frac{b}{2a}, -\\frac{\\Delta}{4a})", 
+        w1: "V(\\frac{b}{2a}, \\frac{\\Delta}{4a})", 
+        w2: "V(-\\frac{b}{a}, -\\frac{\\Delta}{a})", 
+        src: "Pag. 10" 
+    },
+    { 
+        q: "Care sunt relațiile lui Viete pentru ecuația ax^2 + bx + c = 0?", 
+        a: "x_1 + x_2 = -\\frac{b}{a}, x_1 \\cdot x_2 = \\frac{c}{a}", 
+        w1: "x_1 + x_2 = \\frac{b}{a}, x_1 \\cdot x_2 = \\frac{c}{a}", 
+        w2: "x_1 + x_2 = -\\frac{b}{a}, x_1 \\cdot x_2 = -\\frac{c}{a}", 
+        src: "Pag. 9" 
+    },
+
+    // === TRIGONOMETRIE ===
+    { 
+        q: "Care este formula fundamentală a trigonometriei?", 
+        a: "\\sin^2 x + \\cos^2 x = 1", 
+        w1: "\\sin x + \\cos x = 1", 
+        w2: "\\sin^2 x - \\cos^2 x = 1", 
+        src: "Pag. 19" 
+    },
+    { 
+        q: "\\sin(2x) = ?", 
+        a: "2\\sin x \\cos x", 
+        w1: "\\sin^2 x - \\cos^2 x", 
+        w2: "2\\cos^2 x - 1", 
+        src: "Pag. 19" 
+    },
+    { 
+        q: "\\cos(2x) = ?", 
+        a: "\\cos^2 x - \\sin^2 x", 
+        w1: "2\\sin x \\cos x", 
+        w2: "1 - 2\\sin x", 
+        src: "Pag. 19" 
+    },
+    { 
+        q: "Care este valoarea lui \\sin(\\frac{\\pi}{2})?", 
+        a: "1", 
+        w1: "0", 
+        w2: "\\frac{\\sqrt{2}}{2}", 
+        src: "Pag. 18" 
+    },
+
+    // === GEOMETRIE ANALITICA ===
+    { 
+        q: "Care este formula distanței dintre două puncte A(x₁,y₁) și B(x₂,y₂)?", 
+        a: "AB = \\sqrt{(x_2 - x_1)^2 + (y_2 - y_1)^2}", 
+        w1: "AB = |x_2 - x_1| + |y_2 - y_1|", 
+        w2: "AB = (x_2 - x_1)^2 + (y_2 - y_1)^2", 
+        src: "Pag. 15" 
+    },
+    { 
+        q: "Care sunt coordonatele mijlocului unui segment AB?", 
+        a: "M(\\frac{x_A + x_B}{2}, \\frac{y_A + y_B}{2})", 
+        w1: "M(x_A + x_B, y_A + y_B)", 
+        w2: "M(\\frac{x_A - x_B}{2}, \\frac{y_A - y_B}{2})", 
+        src: "Pag. 15" 
+    },
+    { 
+        q: "Care este ecuația dreptei determinată de un punct A(x₀,y₀) și panta m?", 
+        a: "y - y_0 = m(x - x_0)", 
+        w1: "y = mx + y_0", 
+        w2: "x - x_0 = m(y - y_0)", 
+        src: "Pag. 15" 
+    },
+
+    // === DERIVATE ===
+    { 
+        q: "Care este derivata funcției f(x) = xⁿ?", 
+        a: "f'(x) = nx^{n-1}", 
+        w1: "f'(x) = x^{n-1}", 
+        w2: "f'(x) = (n-1)x^n", 
+        src: "Pag. 33" 
+    },
+    { 
+        q: "Care este derivata funcției f(x) = sin x?", 
+        a: "f'(x) = cos x", 
+        w1: "f'(x) = -cos x", 
+        w2: "f'(x) = -sin x", 
+        src: "Pag. 33" 
+    },
+    { 
+        q: "Care este derivata funcției f(x) = eˣ?", 
+        a: "f'(x) = eˣ", 
+        w1: "f'(x) = xe^{x-1}", 
+        w2: "f'(x) = \\ln x", 
+        src: "Pag. 33" 
+    },
+
+    // === INTEGRALE ===
+    { 
+        q: "\\int x^n dx = ?", 
+        a: "\\frac{x^{n+1}}{n+1} + C", 
+        w1: "x^{n+1} + C", 
+        w2: "\\frac{x^n}{n} + C", 
+        src: "Pag. 41" 
+    },
+    { 
+        q: "\\int e^x dx = ?", 
+        a: "e^x + C", 
+        w1: "xe^x + C", 
+        w2: "\\ln x + C", 
+        src: "Pag. 41" 
+    },
+    { 
+        q: "\\int \\sin x dx = ?", 
+        a: "-\\cos x + C", 
+        w1: "\\cos x + C", 
+        w2: "\\sin x + C", 
+        src: "Pag. 41" 
+    },
+
+    // === COMBINATORICA ===
+    { 
+        q: "Cₙᵏ = ?", 
+        a: "\\frac{n!}{k!(n-k)!}", 
+        w1: "\\frac{n!}{(n-k)!}", 
+        w2: "\\frac{k!}{n!(n-k)!}", 
+        src: "Pag. 13" 
+    },
+    { 
+        q: "Pₙ = ?", 
+        a: "n!", 
+        w1: "nⁿ", 
+        w2: "n(n-1)", 
+        src: "Pag. 13" 
+    },
+    { 
+        q: "Aₙᵏ = ?", 
+        a: "\\frac{n!}{(n-k)!}", 
+        w1: "\\frac{n!}{k!}", 
+        w2: "\\frac{k!}{n!}", 
+        src: "Pag. 13" 
+    },
+
+    // === MATRICE SI DETERMINANTI ===
+    { 
+        q: "Când o matrice pătratică este inversabilă?", 
+        a: "Când det A ≠ 0", 
+        w1: "Când det A = 0", 
+        w2: "Când matricea este pătratică", 
+        src: "Pag. 25" 
+    },
+    { 
+        q: "Care este determinantul matricei 2x2: |a b; c d|?", 
+        a: "ad - bc", 
+        w1: "ac - bd", 
+        w2: "ab - cd", 
+        src: "Pag. 24" 
+    },
+
+    // === TEOREME GEOMETRICE ===
+    { 
+        q: "Care este teorema lui Pitagora?", 
+        a: "ip² = c₁² + c₂²", 
+        w1: "ip = c₁ + c₂", 
+        w2: "ip² = c₁² - c₂²", 
+        src: "Pag. 22" 
+    },
+    { 
+        q: "Care este formula ariei triunghiului dreptunghic?", 
+        a: "A = \\frac{c_1 \\cdot c_2}{2}", 
+        w1: "A = c_1 \\cdot c_2", 
+        w2: "A = \\frac{ip \\cdot h}{2}", 
+        src: "Pag. 22" 
+    },
+
+    // === FORMULE FINANCIARE ===
+    { 
+        q: "Care este formula dobânzii simple?", 
+        a: "D = S \\cdot \\frac{r}{100} \\cdot n", 
+        w1: "D = S \\cdot r \\cdot n", 
+        w2: "D = \\frac{S \\cdot r}{100 \\cdot n}", 
+        src: "Pag. 14" 
+    },
+    { 
+        q: "Care este formula pentru prețul după o scumpire cu p%?", 
+        a: "x_{final} = x \\cdot (1 + \\frac{p}{100})", 
+        w1: "x_{final} = x + p", 
+        w2: "x_{final} = x \\cdot \\frac{p}{100}", 
+        src: "Pag. 14" 
+    },
+
+    { 
+        q: "Care este formula termenului general pentru o progresie aritmetică?", 
+        a: "a_n = a_1 + (n-1)r", 
+        w1: "a_n = a_1 \\cdot r^{n-1}", 
+        w2: "a_n = a_1 + nr", 
+        src: "Pag. 1" 
+    },
+    { 
+        q: "Care este formula termenului general pentru o progresie geometrică?", 
+        a: "b_n = b_1 \\cdot q^{n-1}", 
+        w1: "b_n = b_1 + (n-1)q", 
+        w2: "b_n = b_1 \\cdot n \\cdot q", 
+        src: "Pag. 1" 
+    },
+    { 
+        q: "Care este formula pentru suma primilor n termeni ai unei progresii aritmetice?", 
+        a: "S_n = \\frac{(a_1 + a_n) \\cdot n}{2}", 
+        w1: "S_n = a_1 \\cdot \\frac{q^n - 1}{q - 1}", 
+        w2: "S_n = n \\cdot a_1", 
+        src: "Pag. 1" 
+    },
+    { 
+        q: "Care este formula pentru suma primilor n termeni ai unei progresii geometrice cu q ≠ 1?", 
+        a: "S_n = \\frac{b_1(q^n - 1)}{q - 1}", 
+        w1: "S_n = \\frac{(b_1 + b_n) \\cdot n}{2}", 
+        w2: "S_n = b_1 \\cdot n", 
+        src: "Pag. 1" 
+    },
+    { 
+        q: "Când trei numere A, B, C sunt termeni consecutivi ai unei progresii aritmetice?", 
+        a: "2B = A + C", 
+        w1: "B^2 = A \\cdot C", 
+        w2: "B = \\frac{A + C}{3}", 
+        src: "Pag. 1" 
+    },
+    { 
+        q: "Când trei numere A, B, C sunt termeni consecutivi ai unei progresii geometrice?", 
+        a: "B^2 = A \\cdot C", 
+        w1: "2B = A + C", 
+        w2: "B = \\sqrt{A \\cdot C}", 
+        src: "Pag. 1" 
+    },
+
+    // === LOGARITMI ===
+    { 
+        q: "Care este definiția logaritmului?", 
+        a: "a^x = N \\Rightarrow x = \\log_a N", 
+        w1: "a^x = N \\Rightarrow x = \\ln N", 
+        w2: "x^a = N \\Rightarrow a = \\log_x N", 
+        src: "Pag. 2" 
+    },
+    { 
+        q: "\\log_a 1 = ?", 
+        a: "0", 
+        w1: "1", 
+        w2: "a", 
+        src: "Pag. 2" 
+    },
+    { 
+        q: "\\log_a a = ?", 
+        a: "1", 
+        w1: "0", 
+        w2: "a", 
+        src: "Pag. 2" 
+    },
+    { 
+        q: "\\log_a x^n = ?", 
+        a: "n \\cdot \\log_a x", 
+        w1: "\\log_a n \\cdot x", 
+        w2: "x^n \\cdot \\log_a", 
+        src: "Pag. 2" 
+    },
+    { 
+        q: "a^{\\log_a x} = ?", 
+        a: "x", 
+        w1: "a", 
+        w2: "\\log_a x", 
+        src: "Pag. 2" 
+    },
+    { 
+        q: "Care este formula pentru logaritmul unui produs?", 
+        a: "\\log_a x + \\log_a y = \\log_a(x \\cdot y)", 
+        w1: "\\log_a x + \\log_a y = \\log_a(x + y)", 
+        w2: "\\log_a x \\cdot \\log_a y = \\log_a(x \\cdot y)", 
+        src: "Pag. 2" 
+    },
+    { 
+        q: "Care este formula pentru logaritmul unui cât?", 
+        a: "\\log_a x - \\log_a y = \\log_a(\\frac{x}{y})", 
+        w1: "\\log_a x - \\log_a y = \\log_a(x - y)", 
+        w2: "\\frac{\\log_a x}{\\log_a y} = \\log_a(\\frac{x}{y})", 
+        src: "Pag. 2" 
+    },
+    { 
+        q: "Care este formula pentru schimbarea bazei unui logaritm?", 
+        a: "\\log_a b = \\frac{\\log_c b}{\\log_c a}", 
+        w1: "\\log_a b = \\log_c a \\cdot \\log_c b", 
+        w2: "\\log_a b = \\frac{\\log_c a}{\\log_c b}", 
+        src: "Pag. 2" 
+    },
+
+    // === PUTERI SI RADICALI ===
+    { 
+        q: "a^m \\cdot a^n = ?", 
+        a: "a^{m+n}", 
+        w1: "a^{m \\cdot n}", 
+        w2: "a^{m+n+1}", 
+        src: "Pag. 3" 
+    },
+    { 
+        q: "\\frac{a^m}{a^n} = ?", 
+        a: "a^{m-n}", 
+        w1: "a^{m/n}", 
+        w2: "a^{n-m}", 
+        src: "Pag. 3" 
+    },
+    { 
+        q: "(a^m)^n = ?", 
+        a: "a^{m \\cdot n}", 
+        w1: "a^{m+n}", 
+        w2: "a^{m^n}", 
+        src: "Pag. 3" 
+    },
+    { 
+        q: "a^{-n} = ?", 
+        a: "\\frac{1}{a^n}", 
+        w1: "-a^n", 
+        w2: "\\sqrt[n]{a}", 
+        src: "Pag. 3" 
+    },
+    { 
+        q: "\\sqrt{a} \\cdot \\sqrt{b} = ?", 
+        a: "\\sqrt{a \\cdot b}", 
+        w1: "\\sqrt{a + b}", 
+        w2: "a \\cdot b", 
+        src: "Pag. 3" 
+    },
+    { 
+        q: "\\frac{\\sqrt{a}}{\\sqrt{b}} = ?", 
+        a: "\\sqrt{\\frac{a}{b}}", 
+        w1: "\\sqrt{a - b}", 
+        w2: "\\frac{a}{b}", 
+        src: "Pag. 3" 
+    },
+
+    // === NUMERE COMPLEXE ===
+    { 
+        q: "Cum se calculează modulul unui număr complex z = a + bi?", 
+        a: "|z| = \\sqrt{a^2 + b^2}", 
+        w1: "|z| = a + b", 
+        w2: "|z| = a^2 + b^2", 
+        src: "Pag. 4" 
+    },
+    { 
+        q: "Care este conjugatul numărului complex z = a + bi?", 
+        a: "\\overline{z} = a - bi", 
+        w1: "\\overline{z} = -a - bi", 
+        w2: "\\overline{z} = b + ai", 
+        src: "Pag. 4" 
+    },
+    { 
+        q: "Cum se înmulțesc două numere complexe?", 
+        a: "(a+bi)(c+di) = ac - bd + (ad + bc)i", 
+        w1: "(a+bi)(c+di) = ac + bd + (ad + bc)i", 
+        w2: "(a+bi)(c+di) = ac - bd + (ad - bc)i", 
+        src: "Pag. 4" 
+    },
+
+    // === FORMULE DE CALCUL PRESCURTAT ===
+    { 
+        q: "a^2 - b^2 = ?", 
+        a: "(a - b)(a + b)", 
+        w1: "(a + b)^2", 
+        w2: "a^2 + b^2", 
+        src: "Pag. 5" 
+    },
+    { 
+        q: "(a + b)^2 = ?", 
+        a: "a^2 + 2ab + b^2", 
+        w1: "a^2 + b^2", 
+        w2: "a^2 - 2ab + b^2", 
+        src: "Pag. 5" 
+    },
+    { 
+        q: "(a - b)^2 = ?", 
+        a: "a^2 - 2ab + b^2", 
+        w1: "a^2 + 2ab + b^2", 
+        w2: "a^2 - b^2", 
+        src: "Pag. 5" 
+    },
+    { 
+        q: "a^3 - b^3 = ?", 
+        a: "(a - b)(a^2 + ab + b^2)", 
+        w1: "(a - b)^3", 
+        w2: "(a + b)(a^2 - ab + b^2)", 
+        src: "Pag. 5" 
+    },
+    { 
+        q: "a^3 + b^3 = ?", 
+        a: "(a + b)(a^2 - ab + b^2)", 
+        w1: "(a + b)^3", 
+        w2: "(a - b)(a^2 + ab + b^2)", 
+        src: "Pag. 5" 
+    },
+    { 
+        q: "(a + b)^3 = ?", 
+        a: "a^3 + 3a^2b + 3ab^2 + b^3", 
+        w1: "a^3 + b^3", 
+        w2: "a^3 + 2a^2b + 2ab^2 + b^3", 
+        src: "Pag. 5" 
+    },
+
+    // === PARTEA INTREAGA SI PARTEA FRACTIONARA ===
+    { 
+        q: "Care este definiția părții întregi a lui x?", 
+        a: "[x] = cel mai mare întreg ≤ x", 
+        w1: "[x] = cel mai mic întreg ≥ x", 
+        w2: "[x] = x rotunjit", 
+        src: "Pag. 5" 
+    },
+    { 
+        q: "Care este definiția părții fracționare a lui x?", 
+        a: "\\{x\\} = x - [x]", 
+        w1: "\\{x\\} = [x] - x", 
+        w2: "\\{x\\} = \\frac{1}{x}", 
+        src: "Pag. 5" 
+    },
+
+    // === MODUL ===
+    { 
+        q: "Care este definiția modulului |x|?", 
+        a: "|x| = \\begin{cases} x, & x \\geq 0 \\\\ -x, & x < 0 \\end{cases}", 
+        w1: "|x| = x pentru orice x", 
+        w2: "|x| = -x pentru orice x", 
+        src: "Pag. 5" 
+    },
+
+    // === FUNCTIA DE GRADUL I ===
+    { 
+        q: "Care este forma generală a funcției de gradul I?", 
+        a: "f(x) = ax + b, a ≠ 0", 
+        w1: "f(x) = ax^2 + bx + c", 
+        w2: "f(x) = \\frac{a}{x} + b", 
+        src: "Pag. 8" 
+    },
+    { 
+        q: "Când o funcție de gradul I este strict crescătoare?", 
+        a: "Când a > 0", 
+        w1: "Când a < 0", 
+        w2: "Când b > 0", 
+        src: "Pag. 8" 
+    },
+
+    // === FUNCTIA DE GRADUL II ===
+    { 
+        q: "Care este forma generală a funcției de gradul II?", 
+        a: "f(x) = ax^2 + bx + c, a ≠ 0", 
+        w1: "f(x) = ax + b", 
+        w2: "f(x) = ax^3 + bx^2 + cx + d", 
+        src: "Pag. 9" 
+    },
+    { 
+        q: "Care este formula discriminantului (Δ) pentru ecuația de gradul II?", 
+        a: "\\Delta = b^2 - 4ac", 
+        w1: "\\Delta = b^2 + 4ac", 
+        w2: "\\Delta = 4ac - b^2", 
+        src: "Pag. 9" 
+    },
+    { 
+        q: "Care sunt coordonatele vârfului parabolei?", 
+        a: "V(-\\frac{b}{2a}, -\\frac{\\Delta}{4a})", 
+        w1: "V(\\frac{b}{2a}, \\frac{\\Delta}{4a})", 
+        w2: "V(-\\frac{b}{a}, -\\frac{\\Delta}{a})", 
+        src: "Pag. 10" 
+    },
+    { 
+        q: "Care sunt relațiile lui Viete pentru ecuația ax^2 + bx + c = 0?", 
+        a: "x_1 + x_2 = -\\frac{b}{a}, x_1 \\cdot x_2 = \\frac{c}{a}", 
+        w1: "x_1 + x_2 = \\frac{b}{a}, x_1 \\cdot x_2 = \\frac{c}{a}", 
+        w2: "x_1 + x_2 = -\\frac{b}{a}, x_1 \\cdot x_2 = -\\frac{c}{a}", 
+        src: "Pag. 9" 
+    },
+    { 
+        q: "Cum se formează ecuația de gradul II când se cunosc rădăcinile?", 
+        a: "x^2 - Sx + P = 0, unde S=x₁+x₂, P=x₁·x₂", 
+        w1: "x^2 + Sx - P = 0", 
+        w2: "x^2 - Sx - P = 0", 
+        src: "Pag. 9" 
+    },
+
+    // === ECUAȚII IRAȚIONALE ===
+    { 
+        q: "Care sunt condițiile de existență pentru √f(x) = g(x)?", 
+        a: "f(x) ≥ 0 și g(x) ≥ 0", 
+        w1: "f(x) > 0 și g(x) > 0", 
+        w2: "f(x) ≥ 0", 
+        src: "Pag. 11" 
+    },
+
+    // === ECUAȚII EXPONENȚIALE ===
+    { 
+        q: "Cum se rezolvă a^{f(x)} = a^{g(x)}?", 
+        a: "f(x) = g(x)", 
+        w1: "a^{f(x)} = a^{g(x)}", 
+        w2: "f(x) · g(x) = 1", 
+        src: "Pag. 11" 
+    },
+
+    // === ECUAȚII LOGARITMICE ===
+    { 
+        q: "Cum se rezolvă log_a f(x) = log_a g(x)?", 
+        a: "f(x) = g(x) cu f(x)>0, g(x)>0", 
+        w1: "f(x) = g(x) fără condiții", 
+        w2: "a^{f(x)} = a^{g(x)}", 
+        src: "Pag. 11" 
+    },
+
+    // === ECUAȚII TRIGONOMETRICE ===
+    { 
+        q: "Cum se rezolvă sin x = a?", 
+        a: "x = (-1)^k · arcsin a + kπ", 
+        w1: "x = arcsin a + 2kπ", 
+        w2: "x = ± arcsin a + kπ", 
+        src: "Pag. 12" 
+    },
+    { 
+        q: "Cum se rezolvă cos x = a?", 
+        a: "x = ± arccos a + 2kπ", 
+        w1: "x = arccos a + kπ", 
+        w2: "x = (-1)^k · arccos a + kπ", 
+        src: "Pag. 12" 
+    },
+    { 
+        q: "Cum se rezolvă tg x = a?", 
+        a: "x = arctg a + kπ", 
+        w1: "x = arctg a + 2kπ", 
+        w2: "x = ± arctg a + kπ", 
+        src: "Pag. 12" 
+    },
+
+    // === COMBINATORICA ===
+    { 
+        q: "Cₙᵏ = ?", 
+        a: "\\frac{n!}{k!(n-k)!}", 
+        w1: "\\frac{n!}{(n-k)!}", 
+        w2: "\\frac{k!}{n!(n-k)!}", 
+        src: "Pag. 13" 
+    },
+    { 
+        q: "Pₙ = ?", 
+        a: "n!", 
+        w1: "nⁿ", 
+        w2: "n(n-1)", 
+        src: "Pag. 13" 
+    },
+    { 
+        q: "Aₙᵏ = ?", 
+        a: "\\frac{n!}{(n-k)!}", 
+        w1: "\\frac{n!}{k!}", 
+        w2: "\\frac{k!}{n!}", 
+        src: "Pag. 13" 
+    },
+    { 
+        q: "Care este formula binomului lui Newton?", 
+        a: "(a+b)^n = ∑ Cₙᵏ a^{n-k} b^k", 
+        w1: "(a+b)^n = ∑ Pₙ a^k b^k", 
+        w2: "(a+b)^n = a^n + b^n", 
+        src: "Pag. 13" 
+    },
+
+    // === PROBABILITĂȚI ===
+    { 
+        q: "Care este formula probabilității?", 
+        a: "P = nr. cazuri favorabile / nr. cazuri posibile", 
+        w1: "P = nr. cazuri posibile / nr. cazuri favorabile", 
+        w2: "P = 1 - nr. cazuri nefavorabile", 
+        src: "Pag. 13" 
+    },
+
+    // === MATEMATICI FINANCIARE ===
+    { 
+        q: "Care este formula dobânzii simple?", 
+        a: "D = S · \\frac{r}{100} · n", 
+        w1: "D = S · r · n", 
+        w2: "D = \\frac{S · r}{100 · n}", 
+        src: "Pag. 14" 
+    },
+    { 
+        q: "Care este formula pentru prețul după o scumpire cu p%?", 
+        a: "x_{final} = x · (1 + \\frac{p}{100})", 
+        w1: "x_{final} = x + p", 
+        w2: "x_{final} = x · \\frac{p}{100}", 
+        src: "Pag. 14" 
+    },
+    { 
+        q: "Care este formula dobânzii compuse?", 
+        a: "S_{final} = S · (1 + \\frac{r}{100})^n", 
+        w1: "S_{final} = S · (1 + \\frac{r}{100} · n)", 
+        w2: "S_{final} = S + S · \\frac{r}{100} · n", 
+        src: "Pag. 14" 
+    },
+
+    // === GEOMETRIE ANALITICA ===
+    { 
+        q: "Care este formula distanței dintre două puncte A(x₁,y₁) și B(x₂,y₂)?", 
+        a: "AB = \\sqrt{(x_2 - x_1)^2 + (y_2 - y_1)^2}", 
+        w1: "AB = |x_2 - x_1| + |y_2 - y_1|", 
+        w2: "AB = (x_2 - x_1)^2 + (y_2 - y_1)^2", 
+        src: "Pag. 15" 
+    },
+    { 
+        q: "Care sunt coordonatele mijlocului unui segment AB?", 
+        a: "M(\\frac{x_A + x_B}{2}, \\frac{y_A + y_B}{2})", 
+        w1: "M(x_A + x_B, y_A + y_B)", 
+        w2: "M(\\frac{x_A - x_B}{2}, \\frac{y_A - y_B}{2})", 
+        src: "Pag. 15" 
+    },
+    { 
+        q: "Care este ecuația dreptei determinată de un punct A(x₀,y₀) și panta m?", 
+        a: "y - y_0 = m(x - x_0)", 
+        w1: "y = mx + y_0", 
+        w2: "x - x_0 = m(y - y_0)", 
+        src: "Pag. 15" 
+    },
+    { 
+        q: "Care este formula pantei unei drepte?", 
+        a: "m = \\frac{y_2 - y_1}{x_2 - x_1}", 
+        w1: "m = \\frac{x_2 - x_1}{y_2 - y_1}", 
+        w2: "m = y_2 - y_1", 
+        src: "Pag. 15" 
+    },
+    { 
+        q: "Care este formula ariei unui triunghi cu vârfurile A(x₁,y₁), B(x₂,y₂), C(x₃,y₃)?", 
+        a: "A = \\frac{1}{2} |det(\\overrightarrow{AB}, \\overrightarrow{AC})|", 
+        w1: "A = \\frac{1}{2} (x₁y₂ + x₂y₃ + x₃y₁)", 
+        w2: "A = |x₁y₂ + x₂y₃ + x₃y₁|", 
+        src: "Pag. 16" 
+    },
+    { 
+        q: "Care este formula distanței de la un punct la o dreaptă?", 
+        a: "d = \\frac{|Ax_0 + By_0 + C|}{\\sqrt{A^2 + B^2}}", 
+        w1: "d = |Ax_0 + By_0 + C|", 
+        w2: "d = \\frac{Ax_0 + By_0 + C}{\\sqrt{A^2 + B^2}}", 
+        src: "Pag. 16" 
+    },
+
+    // === VECTORI ===
+    { 
+        q: "Cum se calculează modulul unui vector v = (x,y)?", 
+        a: "|\\vec{v}| = \\sqrt{x^2 + y^2}", 
+        w1: "|\\vec{v}| = x + y", 
+        w2: "|\\vec{v}| = x^2 + y^2", 
+        src: "Pag. 17" 
+    },
+    { 
+        q: "Care este formula produsului scalar a doi vectori?", 
+        a: "\\vec{u} · \\vec{v} = |\\vec{u}| · |\\vec{v}| · cos(θ)", 
+        w1: "\\vec{u} · \\vec{v} = |\\vec{u}| + |\\vec{v}|", 
+        w2: "\\vec{u} · \\vec{v} = |\\vec{u}| · |\\vec{v}| · sin(θ)", 
+        src: "Pag. 17" 
+    },
+
+    // === TRIGONOMETRIE ===
+    { 
+        q: "Care este formula fundamentală a trigonometriei?", 
+        a: "\\sin^2 x + \\cos^2 x = 1", 
+        w1: "\\sin x + \\cos x = 1", 
+        w2: "\\sin^2 x - \\cos^2 x = 1", 
+        src: "Pag. 19" 
+    },
+    { 
+        q: "\\sin(2x) = ?", 
+        a: "2\\sin x \\cos x", 
+        w1: "\\sin^2 x - \\cos^2 x", 
+        w2: "2\\cos^2 x - 1", 
+        src: "Pag. 19" 
+    },
+    { 
+        q: "\\cos(2x) = ?", 
+        a: "\\cos^2 x - \\sin^2 x", 
+        w1: "2\\sin x \\cos x", 
+        w2: "1 - 2\\sin x", 
+        src: "Pag. 19" 
+    },
+    { 
+        q: "\\sin(a+b) = ?", 
+        a: "\\sin a \\cos b + \\cos a \\sin b", 
+        w1: "\\sin a \\cos b - \\cos a \\sin b", 
+        w2: "\\cos a \\cos b - \\sin a \\sin b", 
+        src: "Pag. 19" 
+    },
+    { 
+        q: "\\cos(a+b) = ?", 
+        a: "\\cos a \\cos b - \\sin a \\sin b", 
+        w1: "\\cos a \\cos b + \\sin a \\sin b", 
+        w2: "\\sin a \\cos b + \\cos a \\sin b", 
+        src: "Pag. 19" 
+    },
+    { 
+        q: "Care este valoarea lui \\sin(\\frac{\\pi}{2})?", 
+        a: "1", 
+        w1: "0", 
+        w2: "\\frac{\\sqrt{2}}{2}", 
+        src: "Pag. 18" 
+    },
+    { 
+        q: "Care este valoarea lui \\cos(\\pi)?", 
+        a: "-1", 
+        w1: "0", 
+        w2: "1", 
+        src: "Pag. 18" 
+    },
+
+    // === FUNCTII TRIGONOMETRICE INVERSE ===
+    { 
+        q: "arcsin(sin x) = ? pentru x ∈ [-π/2, π/2]", 
+        a: "x", 
+        w1: "sin x", 
+        w2: "1", 
+        src: "Pag. 20" 
+    },
+
+    // === TEOREME IN TRIUNGHI ===
+    { 
+        q: "Care este teorema lui Pitagora?", 
+        a: "ip² = c₁² + c₂²", 
+        w1: "ip = c₁ + c₂", 
+        w2: "ip² = c₁² - c₂²", 
+        src: "Pag. 22" 
+    },
+    { 
+        q: "Care este formula ariei triunghiului dreptunghic?", 
+        a: "A = \\frac{c_1 \\cdot c_2}{2}", 
+        w1: "A = c_1 \\cdot c_2", 
+        w2: "A = \\frac{ip \\cdot h}{2}", 
+        src: "Pag. 22" 
+    },
+    { 
+        q: "Care este teorema cosinusului?", 
+        a: "a² = b² + c² - 2bc·cos A", 
+        w1: "a² = b² + c² + 2bc·cos A", 
+        w2: "a² = b² + c² - bc·cos A", 
+        src: "Pag. 21" 
+    },
+    { 
+        q: "Care este teorema sinusurilor?", 
+        a: "\\frac{a}{\\sin A} = \\frac{b}{\\sin B} = \\frac{c}{\\sin C} = 2R", 
+        w1: "\\frac{a}{\\sin A} = \\frac{b}{\\sin B} = \\frac{c}{\\sin C} = R", 
+        w2: "a\\sin A = b\\sin B = c\\sin C = 2R", 
+        src: "Pag. 21" 
+    },
+    { 
+        q: "Care este formula ariei triunghiului oarecare (Heron)?", 
+        a: "A = \\sqrt{p(p-a)(p-b)(p-c)}", 
+        w1: "A = p(p-a)(p-b)(p-c)", 
+        w2: "A = \\sqrt{(p-a)(p-b)(p-c)}", 
+        src: "Pag. 21" 
+    },
+
+    // === MATRICE SI DETERMINANTI ===
+    { 
+        q: "Când o matrice pătratică este inversabilă?", 
+        a: "Când det A ≠ 0", 
+        w1: "Când det A = 0", 
+        w2: "Când matricea este pătratică", 
+        src: "Pag. 25" 
+    },
+    { 
+        q: "Care este determinantul matricei 2x2: |a b; c d|?", 
+        a: "ad - bc", 
+        w1: "ac - bd", 
+        w2: "ab - cd", 
+        src: "Pag. 24" 
+    },
+    { 
+        q: "Care este matricea unitate de ordin n?", 
+        a: "Matricea cu 1 pe diagonala principală și 0 în rest", 
+        w1: "Matricea cu toate elementele 1", 
+        w2: "Matricea cu toate elementele 0", 
+        src: "Pag. 24" 
+    },
+
+    // === SISTEME DE ECUAȚII ===
+    { 
+        q: "Când un sistem liniar este compatibil determinat?", 
+        a: "Când det A ≠ 0", 
+        w1: "Când det A = 0", 
+        w2: "Când rang A < rang A_extins", 
+        src: "Pag. 26" 
+    },
+
+    // === DERIVATE ===
+    { 
+        q: "Care este derivata funcției f(x) = xⁿ?", 
+        a: "f'(x) = nx^{n-1}", 
+        w1: "f'(x) = x^{n-1}", 
+        w2: "f'(x) = (n-1)x^n", 
+        src: "Pag. 33" 
+    },
+    { 
+        q: "Care este derivata funcției f(x) = sin x?", 
+        a: "f'(x) = cos x", 
+        w1: "f'(x) = -cos x", 
+        w2: "f'(x) = -sin x", 
+        src: "Pag. 33" 
+    },
+    { 
+        q: "Care este derivata funcției f(x) = cos x?", 
+        a: "f'(x) = -sin x", 
+        w1: "f'(x) = sin x", 
+        w2: "f'(x) = -cos x", 
+        src: "Pag. 33" 
+    },
+    { 
+        q: "Care este derivata funcției f(x) = eˣ?", 
+        a: "f'(x) = eˣ", 
+        w1: "f'(x) = xe^{x-1}", 
+        w2: "f'(x) = \\ln x", 
+        src: "Pag. 33" 
+    },
+    { 
+        q: "Care este derivata funcției f(x) = ln x?", 
+        a: "f'(x) = \\frac{1}{x}", 
+        w1: "f'(x) = x", 
+        w2: "f'(x) = e^x", 
+        src: "Pag. 33" 
+    },
+    { 
+        q: "(f · g)' = ?", 
+        a: "f' · g + f · g'", 
+        w1: "f' · g'", 
+        w2: "f · g'", 
+        src: "Pag. 34" 
+    },
+    { 
+        q: "(\\frac{f}{g})' = ?", 
+        a: "\\frac{f' · g - f · g'}{g^2}", 
+        w1: "\\frac{f' · g'}{g^2}", 
+        w2: "\\frac{f' - g'}{g^2}", 
+        src: "Pag. 34" 
+    },
+
+    // === INTEGRALE ===
+    { 
+        q: "\\int x^n dx = ?", 
+        a: "\\frac{x^{n+1}}{n+1} + C", 
+        w1: "x^{n+1} + C", 
+        w2: "\\frac{x^n}{n} + C", 
+        src: "Pag. 41" 
+    },
+    { 
+        q: "\\int e^x dx = ?", 
+        a: "e^x + C", 
+        w1: "xe^x + C", 
+        w2: "\\ln x + C", 
+        src: "Pag. 41" 
+    },
+    { 
+        q: "\\int \\sin x dx = ?", 
+        a: "-\\cos x + C", 
+        w1: "\\cos x + C", 
+        w2: "\\sin x + C", 
+        src: "Pag. 41" 
+    },
+    { 
+        q: "\\int \\cos x dx = ?", 
+        a: "\\sin x + C", 
+        w1: "-\\sin x + C", 
+        w2: "-\\cos x + C", 
+        src: "Pag. 41" 
+    },
+    { 
+        q: "\\int \\frac{1}{x} dx = ?", 
+        a: "\\ln|x| + C", 
+        w1: "\\frac{1}{x^2} + C", 
+        w2: "x + C", 
+        src: "Pag. 41" 
+    },
+    { 
+        q: "Care este formula de integrare prin părți?", 
+        a: "\\int f' · g dx = f · g - \\int f · g' dx", 
+        w1: "\\int f · g dx = f' · g'", 
+        w2: "\\int f' · g dx = f' · g'", 
+        src: "Pag. 40" 
+    }
+
+   ];
+
+// --- STATE ---
+    let state = { active: false, paused: false, score: 0, mistakes: 0, lane: 1, speed: 1, mod: 'normal', gates: [], qData: null, lastTime: 0 };
+    const viewport = document.getElementById('game-viewport');
+    const player = document.getElementById('player');
+    const qBox = document.getElementById('question-box');
+    const gContainer = document.getElementById('gates-container');
+
+    // --- RENDERER ---
+    function safeRender(content, el) {
+        el.innerHTML = '';
+        if(!window.katex || !content) { el.innerText = content || ""; return; }
+
+        if(content.includes('$')) {
+            const parts = content.split('$');
+            parts.forEach((part, i) => {
+                const span = document.createElement('span');
+                if(i % 2 === 1) { 
+                    try { katex.render(part, span, {throwOnError:false}); } catch(e){ span.innerText=part; }
+                    span.style.margin = "0 2px";
+                } else { 
+                    span.innerText = part;
+                }
+                el.appendChild(span);
+            });
+        } else if(content.includes('\\') || content.includes('^')) {
+            try { katex.render(content, el, {throwOnError:false}); } catch(e){ el.innerText=content; }
+        } else {
+            el.innerText = content;
+        }
+    }
+
+    // --- GAME LOGIC ---
+    function startGameClick() {
+        // Pornim sunetele la interacțiunea userului
+        playSound('start');
+        playSound('bg');
+        initGame();
+    }
+
+    function initGame() {
+        document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
+        state = { active: true, paused: false, score: 0, mistakes: 0, lane: 1, speed: 1, mod: 'normal', gates: [], qData: null, lastTime: performance.now() };
+        updateHUD(); updatePlayer();
+        gContainer.innerHTML = '';
+        spawnQ();
+        requestAnimationFrame(loop);
+    }
+
+    function spawnQ() {
+        const d = database[Math.floor(Math.random() * database.length)];
+        state.qData = d;
+        safeRender(d.q, qBox);
+
+        let opts = [{v:d.a, t:'ok'}, {v:d.w1, t:'bad'}, {v:d.w2, t:'bad'}];
+        opts.sort(() => Math.random()-0.5);
+
+        state.gates = [];
+        opts.forEach((opt, i) => {
+            const g = document.createElement('div');
+            g.className = 'gate';
+            g.style.left = (i===0 ? 2 : i===1 ? 35 : 68) + '%';
+            safeRender(opt.v, g);
+            
+            let y = -200; 
+            g.style.top = y + 'px';
+            gContainer.appendChild(g);
+            state.gates.push({el:g, y:y, t:opt.t, lane:i});
+        });
+    }
+
+    function loop(timestamp) {
+        if(!state.active) return;
+        const dt = (timestamp - state.lastTime) / 16;
+        state.lastTime = timestamp;
+
+        if(state.paused) { requestAnimationFrame(loop); return; }
+
+        let spd = state.speed;
+        if(state.mod === 'turbo') spd *= 8;
+        if(state.mod === 'slow') spd *= 0.2;
+
+        player.className = state.mod === 'turbo' ? 'p-turbo' : (state.mod === 'slow' ? 'p-slow' : '');
+
+        let next = false;
+        const vh = viewport.offsetHeight;
+        
+        state.gates.forEach(g => {
+            g.y += spd * dt;
+            g.el.style.top = g.y + 'px';
+
+            const gateBottom = g.y + 130;
+            const playerTop = vh - 70; 
+            
+            if(gateBottom > playerTop && g.y < vh - 20) {
+                if(g.lane === state.lane && !next) {
+                    if(g.t === 'ok') {
+                        next = true; state.score++;
+                        playSound('correct');
+                        if(state.score % 5 === 0) state.speed += 0.2;
+                        g.el.style.background = "#2ecc71";
+                    } else {
+                        fail();
+                    }
+                }
+            }
+        });
+
+        if(next || state.gates.every(g => g.y > vh)) {
+            if(!next && state.gates.every(g => g.y > vh)) {
+                fail();
+            } else if(next) {
+                updateHUD();
+                gContainer.innerHTML = '';
+                spawnQ();
+            }
+        }
+
+        requestAnimationFrame(loop);
+    }
+
+    function fail() {
+        state.paused = true; state.mistakes++; updateHUD();
+        playSound('wrong');
+        document.getElementById('feedback-screen').classList.remove('hidden');
+        safeRender(state.qData.q, document.getElementById('fb-q'));
+        safeRender(state.qData.a, document.getElementById('fb-a'));
+        document.getElementById('fb-src').innerText = "Sursa: " + state.qData.src;
+    }
+
+    function resumeGame() {
+        document.getElementById('feedback-screen').classList.add('hidden');
+        gContainer.innerHTML = '';
+        spawnQ();
+        state.paused = false;
+        state.lastTime = performance.now();
+    }
+
+    function updateHUD() {
+        document.getElementById('hud-score').innerText = "Corecte: " + state.score;
+        document.getElementById('hud-mistakes').innerText = "Greșeli: " + state.mistakes;
+    }
+
+    function updatePlayer() {
+        const pos = [16.66, 50, 83.33];
+        player.style.left = pos[state.lane] + '%';
+        player.style.transform = 'translateX(-50%)';
+    }
+
+    function setLane(dir) {
+        if(!state.active || state.paused) return;
+        state.lane = Math.max(0, Math.min(2, state.lane + dir));
+        updatePlayer();
+    }
+
+    // --- CONTROLS ---
+    const btnLeft = document.getElementById('btn-left');
+    const btnRight = document.getElementById('btn-right');
+    const btnSlow = document.getElementById('btn-slow');
+    const btnTurbo = document.getElementById('btn-turbo');
+
+    const press = (btn) => btn.classList.add('btn-active');
+    const release = (btn) => btn.classList.remove('btn-active');
+
+    btnLeft.addEventListener('touchstart', (e) => { e.preventDefault(); press(btnLeft); setLane(-1); });
+    btnLeft.addEventListener('touchend', (e) => { e.preventDefault(); release(btnLeft); });
+    btnLeft.addEventListener('mousedown', () => { press(btnLeft); setLane(-1); });
+    btnLeft.addEventListener('mouseup', () => release(btnLeft));
+
+    btnRight.addEventListener('touchstart', (e) => { e.preventDefault(); press(btnRight); setLane(1); });
+    btnRight.addEventListener('touchend', (e) => { e.preventDefault(); release(btnRight); });
+    btnRight.addEventListener('mousedown', () => { press(btnRight); setLane(1); });
+    btnRight.addEventListener('mouseup', () => release(btnRight));
+
+    const setMod = (mod, btn) => { state.mod = mod; press(btn); };
+    const resetMod = (btn) => { state.mod = 'normal'; release(btn); };
+
+    btnTurbo.addEventListener('touchstart', (e) => { e.preventDefault(); setMod('turbo', btnTurbo); });
+    btnTurbo.addEventListener('touchend', (e) => { e.preventDefault(); resetMod(btnTurbo); });
+    btnTurbo.addEventListener('mousedown', () => setMod('turbo', btnTurbo));
+    btnTurbo.addEventListener('mouseup', () => resetMod(btnTurbo));
+    btnTurbo.addEventListener('mouseleave', () => resetMod(btnTurbo));
+
+    btnSlow.addEventListener('touchstart', (e) => { e.preventDefault(); setMod('slow', btnSlow); });
+    btnSlow.addEventListener('touchend', (e) => { e.preventDefault(); resetMod(btnSlow); });
+    btnSlow.addEventListener('mousedown', () => setMod('slow', btnSlow));
+    btnSlow.addEventListener('mouseup', () => resetMod(btnSlow));
+    btnSlow.addEventListener('mouseleave', () => resetMod(btnSlow));
+
+    window.addEventListener('keydown', (e) => {
+        if(e.repeat) return;
+        if(e.key === 'ArrowLeft') { press(btnLeft); setLane(-1); }
+        if(e.key === 'ArrowRight') { press(btnRight); setLane(1); }
+        if(e.key === 'ArrowUp') setMod('turbo', btnTurbo);
+        if(e.key === 'ArrowDown') setMod('slow', btnSlow);
+    });
+    window.addEventListener('keyup', (e) => {
+        if(e.key === 'ArrowLeft') release(btnLeft);
+        if(e.key === 'ArrowRight') release(btnRight);
+        if(e.key === 'ArrowUp') resetMod(btnTurbo);
+        if(e.key === 'ArrowDown') resetMod(btnSlow);
+    });
+
+</script>
+</body>
+</html>

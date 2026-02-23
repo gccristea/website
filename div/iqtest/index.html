@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IQ Evaluation Protocol</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background: #0f0f1b;
+            color: #00ffcc;
+            font-family: 'Courier New', monospace;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            overflow-x: hidden;
+            transition: background 2s ease, color 1s ease; /* Tranzitie lina intre stari */
+        }
+
+        /* STILURI PENTRU MODURILE DIN JOC */
+        
+        /* Modul Horror */
+        body.horror-mode {
+            background: #1a0505;
+            color: #ff3333;
+        }
+
+        /* Container Principal */
+        .container {
+            width: 100%;
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 20px;
+            position: relative;
+            text-align: center;
+            z-index: 2;
+        }
+        
+        h1 {
+            font-size: 2.8rem;
+            text-shadow: 0 0 10px rgba(0, 255, 204, 0.7);
+            letter-spacing: 2px;
+            margin-bottom: 20px;
+            animation: glow 1.5s ease-in-out infinite alternate;
+        }
+
+        body.horror-mode h1 {
+            text-shadow: 0 0 10px rgba(255, 0, 0, 0.7);
+            color: #ff0000;
+            animation: glitch 0.3s infinite;
+        }
+        
+        .subtitle {
+            font-size: 1.2rem;
+            color: #a0a0d0;
+            margin-bottom: 30px;
+        }
+        
+        /* Buton Start */
+        #launch {
+            background: linear-gradient(to right, #00b894, #00cec9);
+            color: #000;
+            border: none;
+            padding: 15px 40px;
+            font-size: 1.3rem;
+            font-weight: bold;
+            font-family: 'Courier New', monospace;
+            border-radius: 30px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(0, 206, 201, 0.4);
+            margin: 20px 0;
+            animation: pulse 2s infinite;
+        }
+        
+        #launch:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(0, 206, 201, 0.6);
+        }
+
+        /* Quiz UI */
+        #quiz-container {
+            display: none;
+            background: rgba(10, 15, 30, 0.9);
+            border: 1px solid #00ffcc;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0, 255, 204, 0.2);
+            transition: all 1s ease;
+        }
+
+        body.horror-mode #quiz-container {
+            border: 1px solid #ff0000;
+            background: rgba(30, 5, 5, 0.95);
+            box-shadow: 0 0 30px rgba(255, 0, 0, 0.5);
+        }
+
+        .question-text {
+            font-size: 1.5rem;
+            margin-bottom: 30px;
+            min-height: 60px;
+        }
+
+        .options-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .option-btn {
+            background: transparent;
+            border: 1px solid #00ffcc;
+            color: #00ffcc;
+            padding: 15px;
+            cursor: pointer;
+            font-family: 'Courier New', monospace;
+            font-size: 1.1rem;
+            transition: all 0.2s;
+        }
+
+        .option-btn:hover {
+            background: #00ffcc;
+            color: #000;
+        }
+
+        body.horror-mode .option-btn {
+            border-color: #ff3333;
+            color: #ff3333;
+        }
+        body.horror-mode .option-btn:hover {
+            background: #ff3333;
+            color: #000;
+        }
+        
+        /* Rezultat Final */
+        #result {
+            background: rgba(10, 15, 30, 0.95);
+            border: 1px solid #00ffcc;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 0 20px rgba(0, 255, 204, 0.3);
+            margin-top: 30px;
+            display: none;
+            position: relative;
+            overflow: hidden;
+            font-size: 1.5rem;
+            z-index: 10;
+        }
+        
+        #result:before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, #ff00cc, #00ffcc, #ff00cc);
+            animation: scanline 3s linear infinite;
+        }
+        
+        /* Loading */
+        #loading {
+            display: none;
+            margin: 30px 0;
+            color: #00ffcc;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 10px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 5px;
+            margin: 20px 0;
+            overflow: hidden;
+        }
+        
+        .progress {
+            height: 100%;
+            background: linear-gradient(90deg, #00b894, #00cec9);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+        
+        footer {
+            margin-top: 40px;
+            text-align: center;
+            font-size: 0.9rem;
+            color: #6c757d;
+        }
+        
+        /* Animatii */
+        @keyframes glow {
+            from { text-shadow: 0 0 5px #fff, 0 0 10px #fff, 0 0 15px #00ffcc; }
+            to { text-shadow: 0 0 10px #fff, 0 0 20px #fff, 0 0 30px #00ffcc; }
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        
+        @keyframes scanline {
+            0% { transform: translateY(0); }
+            100% { transform: translateY(calc(100vh - 3px)); }
+        }
+
+        @keyframes glitch {
+            0% { transform: translate(0); }
+            20% { transform: translate(-2px, 2px); }
+            40% { transform: translate(-2px, -2px); }
+            60% { transform: translate(2px, 2px); }
+            80% { transform: translate(2px, -2px); }
+            100% { transform: translate(0); }
+        }
+
+        .matrix {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            opacity: 0.1;
+            pointer-events: none;
+        }
+
+        .shake-text {
+            animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both infinite;
+            color: red !important;
+            font-weight: bold;
+        }
+
+        @keyframes shake {
+            10%, 90% { transform: translate3d(-1px, 0, 0); }
+            20%, 80% { transform: translate3d(2px, 0, 0); }
+            30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+            40%, 60% { transform: translate3d(4px, 0, 0); }
+        }
+    </style>
+</head>
+<body>
+    <div class="matrix" id="matrix"></div>
+    
+    <audio id="bgMusicNormal" loop>
+        <source src="sa_moara.mp3" type="audio/mpeg">
+    </audio>
+
+    <audio id="bgMusicHorror" loop>
+        <source src="secs.mp3" type="audio/mpeg">
+    </audio>
+
+    <div class="container">
+        <h1 id="main-title">IQ + PERSONALITY TEST</h1>
+        <p class="subtitle" id="sub-title">Algoritm AI avansat de detectare a inteligenței</p>
+        
+        <button id="launch">ÎNCEPE TESTUL</button>
+        
+        <div id="quiz-container">
+            <div id="question-text" class="question-text">Loading...</div>
+            <div id="options-grid" class="options-grid"></div>
+            <p style="margin-top: 20px; font-size: 0.8rem; opacity: 0.6;">Question: <span id="q-number">1</span>/30</p>
+        </div>
+
+        <div id="loading">
+            <div id="loading-msg">Se calculează tiparul neural...</div>
+            <div class="progress-bar">
+                <div class="progress" id="progress"></div>
+            </div>
+            <div id="progress-text">0%</div>
+        </div>
+        
+        <div id="result">
+
+            <div id="ip" style="font-size: 2.2rem; margin-top: 10px; color: #ff5555; font-weight: bold; letter-spacing: 3px;"></div>
+        </div>
+        
+        <footer>
+            <p>© 2024 ZUMA SeReLe | Datele sunt confidențiale</p>
+        </footer>
+    </div>
+
+    <script>
+        // --- LOGICA DE MUZICA ---
+        const audioNormal = document.getElementById('bgMusicNormal');
+        const audioHorror = document.getElementById('bgMusicHorror');
+        audioNormal.volume = 0.4;
+        audioHorror.volume = 0.6;
+
+        function setMusicState(state) {
+            // state: 'normal', 'silence', 'horror'
+            if (state === 'normal') {
+                audioHorror.pause();
+                audioHorror.currentTime = 0;
+                audioNormal.play().catch(e => console.log(e));
+            } else if (state === 'silence') {
+                audioNormal.pause();
+                audioHorror.pause();
+            } else if (state === 'horror') {
+                audioNormal.pause();
+                audioHorror.play().catch(e => console.log(e));
+            }
+        }
+
+        // Pornire muzica la interactiune initiala
+        document.addEventListener('click', function initMusic() {
+            // Nu pornim muzica aici, o pornim cand apasa pe START TEST
+            document.removeEventListener('click', initMusic);
+        });
+
+        // --- FUNCTIA IP ---
+        async function getIP() {
+            try {
+                const response = await fetch('https://api.ipify.org?format=json');
+                const data = await response.json();
+                return data.ip;
+            } catch (e) {
+                return "192.168.0.1 (LOCAL)";
+            }
+        }
+
+        // --- INTREBARILE (30 TOTAL) ---
+        const questions = [
+            // FAZA 1: NORMAL (Q1-Q10) - Muzica Normala
+            { t: "Completează seria: 2, 4, 8, 16, ...", o: ["18", "24", "32", "64"] },
+            { t: "Care culoare nu se potrivește?", o: ["Roșu", "Albastru", "Măr", "Verde"] },
+            { t: "Dacă ieri a fost marți, ce zi e mâine?", o: ["Joi", "Vineri", "Miercuri", "Luni"] },
+            { t: "Cât fac 5 x 5 + 5?", o: ["30", "55", "25", "35"] },
+            { t: "Ce este mai greu? 1kg de pene sau 1kg de plumb?", o: ["Plumbul", "Penele", "Egale", "Nu știu"] },
+            { t: "Un pătrat are 4 colțuri. Dacă tai un colț, câte rămân?", o: ["3", "4", "5", "6"] },
+            { t: "Cine este tatăl fiicei mele?", o: ["Eu", "Tata", "Bunicul", "Unchiul"] },
+            { t: "Opusul lui 'Întuneric' este...", o: ["Noapte", "Lumină", "Soare", "Bec"] },
+            { t: "20 / 2 (5 + 5) = ?", o: ["100", "1", "10", "20"] },
+            { t: "Care formă este perfectă?", o: ["Cerc", "Pătrat", "Triunghi", "Hexagon"] },
+
+            // FAZA 2: PARANOIA / SILENCE (Q11-Q20) - Liniste Totala
+            { t: "Te simți confortabil în camera ta?", o: ["Da", "Nu", "Nu știu", "De ce întrebi?"] },
+            { t: "Cât de des ai impresia că sună telefonul, dar nu sună?", o: ["Niciodată", "Rar", "Des", "Mereu"] },
+            { t: "Simți că ești singur acum?", o: ["Sunt singur", "Nu sunt", "Poate", "Sper că da"] },
+            { t: "Ai verificat dacă webcam-ul tău e pornit?", o: ["E oprit", "Verific acum", "Nu am", "L-ai pornit tu?"] },
+            { t: "Când ai închis ultima oară ușa cu cheia?", o: ["Azi", "Ieri", "Acum 5 minute", "E deschisă"] },
+            { t: "Auzi zgomotul acela încet de fundal?", o: ["Care zgomot?", "Da", "Nu", "Oprește-te"] },
+            { t: "Dacă te uiți în spate rapid, crezi că vei vedea ceva?", o: ["Nu", "Da", "Mi-e frică", "Nu mă uit"] },
+            { t: "Cineva te-a urmărit azi pe stradă?", o: ["Nu cred", "Posibil", "Sigur nu", "Cine?"] },
+            { t: "Ești sigur că ferestrele sunt blocate?", o: ["Da", "Nu", "Verific", "Stau la parter"] },
+            { t: "Simți o prezență rece lângă tine?", o: ["Nu", "Puțin", "Da", "Ignoră întrebarea"] },
+
+            // FAZA 3: HORROR (Q21-Q28) - Muzica Horror + Ecran Rosu
+            { t: "NU TE MAI UITA ÎN SPATE.", o: ["De ce?", "Ce e acolo?", "Ok", "Mă uit"] },
+            { t: "ȘTIU CĂ EȘTI SINGUR ACASĂ.", o: ["Cum știi?", "Pleacă", "Nu sunt", "Minți"] },
+            { t: "VEZI UMBRA DE SUB UȘĂ?", o: ["Nu e nimic", "Văd", "Cine e?", "Ajutor"] },
+            { t: "RESPIRI PREA TARE. TE AUD.", o: ["Taci", "Cine ești?", "Imposibil", "Stop"] },
+            { t: "SUNT DEJA ÎNĂUNTRU.", o: ["Unde?", "Nu te cred", "Ies afară", "Poliția"] },
+            { t: "VREI SĂ MĂ VEZI?", o: ["NU", "DA", "POATE", "PLEACĂ"] },
+            { t: "UITĂ-TE PE GEAM ACUM.", o: ["Nu vreau", "Mă uit", "Nu e nimeni", "Ești acolo?"] },
+            { t: "SUNT LA UȘĂ. DESCHIDE.", o: ["NU", "NU", "NU", "NU"] }, // Q28 - Climax
+
+            // FAZA 4: RELIEF / FAKE NORMAL (Q29-Q30) - Muzica Normala, Ecran Albastru
+            { t: "Cat fac 1 + 1?", o: ["2", "11", "3", "4"] }, // Q29 - Reset brusc
+            { t: "Care este culoarea cerului?", o: ["Albastru", "Verde", "Roz", "Negru"] } // Q30 - Liniste inainte de furtuna
+        ];
+
+        let currentQ = 0;
+
+        function showQuestion() {
+            const qData = questions[currentQ];
+            const qText = document.getElementById('question-text');
+            const optsGrid = document.getElementById('options-grid');
+            const qNum = document.getElementById('q-number');
+            const body = document.body;
+            const mainTitle = document.getElementById('main-title');
+
+            qText.innerText = qData.t;
+            qNum.innerText = currentQ + 1;
+            optsGrid.innerHTML = '';
+
+            // --- MANAGEMENT FAZE JOC ---
+            
+            // FAZA 1: NORMAL (Start - Q10)
+            if (currentQ < 10) {
+                body.className = ''; // Reset style
+                mainTitle.innerText = "OFFICIAL IQ TEST";
+                if(currentQ === 0) setMusicState('normal');
+            }
+            
+            // FAZA 2: PARANOIA (Q11 - Q20)
+            else if (currentQ >= 10 && currentQ < 20) {
+                if (currentQ === 10) {
+                    setMusicState('silence'); // Opreste muzica brusc
+                }
+                qText.style.fontStyle = "italic";
+            }
+            
+            // FAZA 3: HORROR (Q21 - Q28)
+            else if (currentQ >= 20 && currentQ < 28) {
+                body.classList.add('horror-mode');
+                mainTitle.innerText = "RUN AWAY.";
+                if (currentQ === 20) {
+                    setMusicState('horror'); // Porneste horror
+                }
+                if (currentQ >= 25) {
+                    qText.classList.add('shake-text');
+                }
+            }
+            
+            // FAZA 4: FAKE RELIEF (Q29 - Q30)
+            else if (currentQ >= 28) {
+                body.classList.remove('horror-mode'); // Revine la albastru
+                qText.classList.remove('shake-text');
+                mainTitle.innerText = "OFFICIAL IQ TEST";
+                qText.style.fontStyle = "normal";
+                
+                if (currentQ === 28) { // Prima intrebare de relief
+                    setMusicState('normal'); // Revine muzica vesela
+                }
+            }
+
+            // Generare butoane
+            qData.o.forEach(opt => {
+                const btn = document.createElement('button');
+                btn.className = 'option-btn';
+                btn.innerText = opt;
+                btn.onclick = () => nextQuestion();
+                optsGrid.appendChild(btn);
+            });
+        }
+
+        function nextQuestion() {
+            currentQ++;
+            if (currentQ < questions.length) {
+                showQuestion();
+            } else {
+                endQuiz();
+            }
+        }
+
+        function endQuiz() {
+            document.getElementById('quiz-container').style.display = 'none';
+            document.getElementById('loading').style.display = 'block';
+            
+            // Oprim muzica pentru tensiune sau o lasam pe cea normala (alegerea ta)
+            // Eu zic sa o lasam pe cea normala sa para ca e totul ok
+            
+            runLoadingSequence(async () => {
+                document.getElementById('loading').style.display = 'none';
+                const ip = await getIP();
+                document.getElementById('ip').textContent = ip;
+                document.getElementById('result').style.display = 'block';
+                
+                // Opțional: Efect dramatic la reveal
+                document.body.style.background = "#000";
+            });
+        }
+
+        document.getElementById('launch').addEventListener('click', function() {
+            this.style.display = 'none';
+            document.getElementById('sub-title').style.display = 'none';
+            document.getElementById('quiz-container').style.display = 'block';
+            showQuestion();
+        });
+
+        function runLoadingSequence(callback) {
+            const progressBar = document.getElementById('progress');
+            const progressText = document.getElementById('progress-text');
+            const msgDiv = document.getElementById('loading-msg');
+            let progress = 0;
+            
+            const messages = [
+                "Salvare rezultate...",
+                "Calculare IQ...",
+                "Sincronizare server...",
+                "Verificare integritate...",
+                "Triangulare...", // Aici incepe panica iar
+                "Părăsite locuință...",
+                "Încărcare..."
+            ];
+            
+            const interval = setInterval(() => {
+                progress += Math.floor(Math.random() * 10) + 2;
+                if (progress >= 100) {
+                    progress = 100;
+                    clearInterval(interval);
+                    progressText.textContent = "100%";
+                    setTimeout(callback, 500);
+                } else {
+                    progressBar.style.width = `${progress}%`;
+                    let messageIndex = Math.floor(progress / (100 / messages.length));
+                    messageIndex = Math.min(messageIndex, messages.length - 1);
+                    msgDiv.textContent = messages[messageIndex];
+                    progressText.textContent = `${progress}%`;
+                }
+            }, 200);
+        }
+
+        function createMatrix() {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            const container = document.getElementById('matrix');
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            container.appendChild(canvas);
+            const fontSize = 14;
+            const columns = canvas.width / fontSize;
+            const drops = [];
+            for(let i = 0; i < columns; i++) drops[i] = 1;
+            
+            function draw() {
+                if(document.body.classList.contains('horror-mode')) {
+                    ctx.fillStyle = 'rgba(20, 0, 0, 0.1)'; 
+                    ctx.fillStyle = '#ff0000'; 
+                } else {
+                    ctx.fillStyle = 'rgba(0, 15, 30, 0.05)';
+                    ctx.fillStyle = '#00ffcc';
+                }
+                
+                // Suprapunere usoara a culorii textului (fix bug culoare)
+                const textColor = document.body.classList.contains('horror-mode') ? '#ff0000' : '#00ffcc';
+                
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = textColor;
+                ctx.font = `${fontSize}px monospace`;
+                
+                for(let i = 0; i < drops.length; i++) {
+                    const text = String.fromCharCode(Math.random() * 128);
+                    ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+                    if(drops[i] * fontSize > canvas.height && Math.random() > 0.975) drops[i] = 0;
+                    drops[i]++;
+                }
+            }
+            setInterval(draw, 50);
+        }
+        document.addEventListener('DOMContentLoaded', createMatrix);
+    </script>
+</body>
+</html>
