@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>BAC</title>
+
+  <link rel="icon" type="image/png" href="/images/favicon.png" />
+  <style>
+    @font-face {
+      font-family: 'FiraCodeNerdFontMono';
+      src: url('/fonts/FiraCodeNerdFontMono-Medium.ttf') format('truetype');
+      font-weight: normal;
+      font-style: normal;
+    }
+
+    body {
+      background-color: black;
+      color: #00ff00;
+      margin: 0;
+      padding: 20px 10px;
+      font-size: 18px;
+      font-weight: bold;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      font-family: 'FiraCodeNerdFontMono', 'Fira Code', monospace;
+    }
+
+    a { color: #00ff00; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    .header-container {
+      border: 3px solid #00ff00;
+      padding: 20px;
+      margin-bottom: 30px;
+      border-radius: 10px;
+      width: 90%;
+      max-width: 600px;
+      text-align: center;
+    }
+
+    .timers-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 20px;
+      width: 90%;
+      max-width: 900px;
+      margin-bottom: 20px;
+    }
+
+    @media (min-width: 768px) {
+      .timers-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    .container {
+      border: 3px solid #00ff00;
+      padding: 20px;
+      border-radius: 10px;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .highlight {
+      background-color: #00ff00;
+      color: black;
+      padding: 2px 5px;
+      border-radius: 3px;
+    }
+
+    h1 {
+      font-size: 60px;
+      margin-bottom: 10px;
+      margin-top: 0;
+    }
+
+    h2 {
+      font-size: 20px;
+      margin-top: 10px;
+      margin-bottom: 15px;
+    }
+
+    .time {
+      font-size: 30px;
+      margin: 10px 0;
+      text-shadow: 0 0 5px rgba(0, 255, 0, 0.4);
+    }
+
+    .date-label {
+      font-size: 14px;
+      opacity: 0.8;
+      margin-top: 5px;
+    }
+
+    .social-container {
+      border: 3px solid #00ff00;
+      padding: 20px;
+      margin-top: 10px;
+      border-radius: 10px;
+      width: 90%;
+      max-width: 600px;
+      display: flex;
+      justify-content: center;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header-container">
+    <h1>BAC</h1>
+  </div>
+  <div class="timers-grid">
+    <div class="container">
+      <h2>Competențe</h2>
+      <div id="comp" class="time">Se încarcă...</div>
+      <div class="date-label">8 Iunie 2026 (09:00)</div>
+    </div>
+
+    <div class="container">
+      <h2>Limba Română</h2>
+      <div id="romana" class="time">Se încarcă...</div>
+      <div class="date-label">29 Iunie 2026 (09:00)</div>
+    </div>
+
+    <div class="container">
+      <h2>Matematică</h2>
+      <div id="mate" class="time">Se încarcă...</div>
+      <div class="date-label">30 Iunie 2026 (09:00)</div>
+    </div>
+
+    <div class="container">
+      <h2>Proba la Alegere</h2>
+      <div id="alegere" class="time">Se încarcă...</div>
+      <div class="date-label">2 Iulie 2026 (09:00)</div>
+    </div>
+
+    <div class="container">
+      <h2>TVC</h2>
+      <div id="tvc" class="time">Se încarcă...</div>
+      <div class="date-label">21 Iulie 2026 (09:00)</div>
+    </div>
+
+    <div class="container">
+      <h2>Poli</h2>
+      <div id="poli" class="time">Se încarcă...</div>
+      <div class="date-label">24 Iulie 2026 (09:00)</div>
+    </div>
+  </div>
+
+  <div class="social-container">
+    <div style="text-align: left; display: flex; flex-direction: column; gap: 7px;">
+        <span style="font-size: 1.7rem; margin-right: 10px;"></span> Baftă
+    </div>
+  </div>
+
+  <script>
+    const exams = [
+      { id: 'comp', date: '2026-06-08T09:00:00' },
+      { id: 'romana', date: '2026-06-29T09:00:00' },
+      { id: 'mate', date: '2026-06-30T09:00:00' },
+      { id: 'alegere', date: '2026-07-02T09:00:00' },
+      { id: 'tvc', date: '2026-07-21T09:00:00' },
+      { id: 'poli', date: '2026-07-24T09:00:00' }
+    ];
+
+    function updateTimers() {
+      const now = new Date().getTime();
+
+      exams.forEach(exam => {
+        const countDownDate = new Date(exam.date).getTime();
+        const distance = countDownDate - now;
+        const el = document.getElementById(exam.id);
+
+        if (!el) return;
+
+        if (distance < 0) {
+          el.innerHTML = "<span class='highlight'>FINALIZAT</span>";
+          return;
+        }
+
+        const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+        const h = hours < 10 ? '0' + hours : hours;
+        const m = minutes < 10 ? '0' + minutes : minutes;
+        const s = seconds < 10 ? '0' + seconds : seconds;
+
+        el.innerHTML = `${days}z ${h}h ${m}m ${s}s`;
+      });
+    }
+
+    updateTimers();
+    setInterval(updateTimers, 1000);
+  </script>
+</body>
+</html>
