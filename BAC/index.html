@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>BAC</title>
+  <title>BAC 2026</title>
 
   <link rel="icon" type="image/png" href="/images/favicon.png" />
   <style>
@@ -114,11 +114,24 @@
   <div class="header-container">
     <h1>BAC</h1>
   </div>
+
   <div class="timers-grid">
+    <div class="container">
+      <h2>Balul de Absolvire</h2>
+      <div id="bal" class="time">Se încarcă...</div>
+      <div class="date-label">5 Iunie 2026 (00:00)</div>
+    </div>
+
     <div class="container">
       <h2>Competențe</h2>
       <div id="comp" class="time">Se încarcă...</div>
       <div class="date-label">8 Iunie 2026 (09:00)</div>
+    </div>
+
+    <div class="container">
+      <h2>Ultimul Apel</h2>
+      <div id="apel" class="time">Se încarcă...</div>
+      <div class="date-label">17 Iunie 2026 (20:00)</div>
     </div>
 
     <div class="container">
@@ -154,13 +167,15 @@
 
   <div class="social-container">
     <div style="text-align: left; display: flex; flex-direction: column; gap: 7px;">
-        <span style="font-size: 1.7rem; margin-right: 10px;"></span> Baftă
+        <span style="font-size: 1.7rem; margin-right: 10px;"></span> Succes la tot ce urmează!
     </div>
   </div>
 
   <script>
     const exams = [
+      { id: 'bal', date: '2026-06-05T00:00:00' },
       { id: 'comp', date: '2026-06-08T09:00:00' },
+      { id: 'apel', date: '2026-06-17T20:00:00' }, // ID-ul corespunde cu cel din HTML
       { id: 'romana', date: '2026-06-29T09:00:00' },
       { id: 'mate', date: '2026-06-30T09:00:00' },
       { id: 'alegere', date: '2026-07-02T09:00:00' },
